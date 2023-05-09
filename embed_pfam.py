@@ -72,7 +72,10 @@ def embed_fam(path, tokenizer, model, device):
     files = [f'{path}/{file}' for file in os.listdir(path) if file.endswith('.fa')]
 
     # Open each fasta file
-    for file in files:
+    for i, file in enumerate(files):
+
+        if i > 5:
+            break
 
         # Check if embedding already exists
         if os.path.exists(f'prott5_embed/{ref_dir}/{file.split("/")[-1].replace(".fa", ".txt")}'):
