@@ -15,7 +15,7 @@ from transformers import T5EncoderModel, T5Tokenizer
 logging.basicConfig(filename='embed_pfam.log', level=logging.INFO, format='%(asctime)s %(message)s')
 
 
-def prot_t5xl_embed(seq, tokenizer, encoder):
+def prot_t5xl_embed(seq, tokenizer, encoder, device):
     """=============================================================================================
     This function accepts a protein sequence and returns a list of vectors, each vector representing
     a single amino acid using RostLab's ProtT5_XL_UniRef50 model.
@@ -23,6 +23,7 @@ def prot_t5xl_embed(seq, tokenizer, encoder):
     :param seq: protein sequence
     :param: tokenizer: tokenizer model
     :param encoder: encoder model
+    :param device: gpu/cpu
     return: list of vectors
     ============================================================================================="""
 
@@ -32,8 +33,8 @@ def prot_t5xl_embed(seq, tokenizer, encoder):
 
     # Tokenize, encode, and load sequence
     ids = tokenizer.batch_encode_plus(seq, add_special_tokens=True, padding=True)
-    input_ids = torch.tensor(ids['input_ids'])  # pylint: disable=E1101
-    attention_mask = torch.tensor(ids['attention_mask'])  # pylint: disable=E1101
+    input_ids = torch.tensor(ids['input_ids']).to(device)  # pylint: disable=E1101
+    attention_mask = torch.tensor(ids['attention_mask']).to(device)  # pylint: disable=E1101
 
     # Extract sequence features
     with torch.no_grad():
@@ -49,7 +50,7 @@ def prot_t5xl_embed(seq, tokenizer, encoder):
     return features[0]
 
 
-def embed_fam(path, tokenizer, model):
+def embed_fam(path, tokenizer, model, device):
     """=============================================================================================
     This function accepts a directory that contains fasta files of protein sequences and embeds
     each sequence using the provided tokenizer and encoder. The embeddings are saved as numpy
@@ -58,6 +59,7 @@ def embed_fam(path, tokenizer, model):
     :param seq: protein sequence
     :param: tokenizer: tokenizer model
     :param model: encoder model
+    :param device: gpu/cpu
     return: list of vectors
     ============================================================================================="""
 
@@ -71,6 +73,12 @@ def embed_fam(path, tokenizer, model):
 
     # Open each fasta file
     for file in files:
+
+        # Check if embedding already exists
+        if os.path.exists(f'prott5_embed/{ref_dir}/{file.split("/")[-1].replace(".fa", ".txt")}'):
+            logging.info('Embedding for %s already exists. Skipping...', file)
+            continue
+
         with open(file, 'r', encoding='utf8') as fa_file:
             logging.info('Embedding %s...', file)
 
@@ -78,13 +86,13 @@ def embed_fam(path, tokenizer, model):
             seq = ''.join([line.strip('\n') for line in fa_file.readlines()[1:]])
 
             # Embed sequence
-            seq_emd = prot_t5xl_embed(seq, tokenizer, model)
+            seq_emd = prot_t5xl_embed(seq, tokenizer, model, device)
 
             # Save embedding as numpy array
             filename = file.rsplit('/', maxsplit=1)[-1].replace('.fa', '.txt')
             with open(f'prott5_embed/{ref_dir}/{filename}', 'w', encoding='utf8') as f:
                 np.savetxt(f, seq_emd, fmt='%4.6f', delimiter=' ')
-        break
+
     logging.info('Finished embedding sequences in %s\n', ref_dir)
 
 
@@ -106,11 +114,15 @@ def main():
         model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
         torch.save(model, 'prot_t5_xl.pt')
 
+    # Load model to gpu if available
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
+    model.to(device)
+
     # Get names of all family folders and embed all seqs in each one
     families = [f'families/{fam}' for fam in os.listdir('families')]
     for fam in families:
         logging.info('Embedding sequences in %s...', fam)
-        embed_fam(fam, tokenizer, model)
+        embed_fam(fam, tokenizer, model, device)
 
 
 if __name__ == '__main__':

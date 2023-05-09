@@ -71,7 +71,7 @@ def main():
     else:
         print('Pfam-A.seed not found. Downloading from Pfam...')
         os.system('wget https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.seed.gz')
-        os.system('unzip Pfam-A.seed.gz')
+        os.system('gunzip Pfam-A.seed.gz')
         pfam = 'Pfam-A.seed'
     read_pfam(pfam)
 
