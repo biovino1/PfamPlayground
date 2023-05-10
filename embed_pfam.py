@@ -15,20 +15,20 @@ from transformers import T5EncoderModel, T5Tokenizer
 logging.basicConfig(filename='embed_pfam.log', level=logging.INFO, format='%(asctime)s %(message)s')
 
 
-def prot_t5xl_embed(seq, tokenizer, encoder, device):
+def prot_t5xl_embed(seq: str, tokenizer, encoder, device) -> list:
     """=============================================================================================
     This function accepts a protein sequence and returns a list of vectors, each vector representing
     a single amino acid using RostLab's ProtT5_XL_UniRef50 model.
 
     :param seq: protein sequence
-    :param: tokenizer: tokenizer model
+    :param tokenizer: tokenizer model
     :param encoder: encoder model
     :param device: gpu/cpu
     return: list of vectors
     ============================================================================================="""
 
     # Remove special chars, add space after each amino acid so each residue is vectorized
-    seq = re.sub(r"[UZOB]", "X", seq)
+    seq = re.sub(r"[UZOB]", "X", seq).upper()
     seq = [' '.join([*seq])]
 
     # Tokenize, encode, and load sequence
@@ -50,17 +50,16 @@ def prot_t5xl_embed(seq, tokenizer, encoder, device):
     return features[0]
 
 
-def embed_fam(path, tokenizer, model, device):
+def embed_fam(path: str, tokenizer, model, device):
     """=============================================================================================
     This function accepts a directory that contains fasta files of protein sequences and embeds
     each sequence using the provided tokenizer and encoder. The embeddings are saved as numpy
     arrays in a new directory.
 
-    :param seq: protein sequence
-    :param: tokenizer: tokenizer model
+    :param path: directory containing fasta files
+    :param tokenizer: tokenizer model
     :param model: encoder model
     :param device: gpu/cpu
-    return: list of vectors
     ============================================================================================="""
 
     # Get last directory in path

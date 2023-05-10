@@ -8,7 +8,7 @@ Ben Iovino  05/01/23   PfamPlayground
 import os
 
 
-def clean_fasta(seq: str):
+def clean_fasta(seq: str) -> str:
     """=============================================================================================
     This function accepts a fasta sequence with gaps and returns it with no gaps and split every
     50 characters (.fa format).
@@ -60,6 +60,11 @@ def read_pfam(pfam: str):
 
 
 def main():
+    """=============================================================================================
+    Main detects if Pfam-A.seed database is in directory. If not, it will download from Pfam
+    website and unzip. Then, it will call read_pfam to parse each family into individual fasta
+    files.
+    ============================================================================================="""
 
     # Check if directory for families exist
     if not os.path.exists('families'):
