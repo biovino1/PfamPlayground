@@ -32,7 +32,8 @@ def sample_families(families: list, sample_prop: float):
 
 def align_samples(samples: list):
     """=============================================================================================
-    This function accepts a list of fasta files and aligns each sequence to each other using PEbA.
+    This function accepts a list of fasta files and aligns each sequence to each other using PEbA
+    and BLOSUM to get the alignment score from both.
 
     :param samples: list of fasta files sampled from Pfam families
     ============================================================================================="""
@@ -44,20 +45,28 @@ def align_samples(samples: list):
                 continue
 
             # Get fasta files for sample and sequences
-            samp1_split, samp2_split = samp1[0].split('/'), samp2[0].split('/')
+            samp1_split, samp2_split = samp1.split('/'), samp2.split('/')
             samp1_fasta = f'families/{samp1_split[1]}/{samp1_split[2].replace(".txt", ".fa")}'
             samp2_fasta = f'families/{samp2_split[1]}/{samp2_split[2].replace(".txt", ".fa")}'
 
             # Create directory for alignment
             fam1, fam2 = samp1_split[1], samp2_split[1]
             seq1, seq2 = samp1_split[2].strip('.txt'), samp2_split[2].strip('.txt')
-            direc = f'alignments/{fam1}/{seq1}-{fam2}'
-            if not os.path.exists(direc):
-                os.makedirs(direc)
+            direc = f'{fam1}/{seq1}-{fam2}'
+
+            # Create directories for PEbA and BLOSUM alignments
+            if not os.path.exists(f'alignments/PEbA/{direc}'):
+                os.makedirs(f'alignments/PEbA/{direc}')
+            if not os.path.exists(f'alignments/blosum/{direc}'):
+                os.makedirs(f'alignments/blosum/{direc}')
 
             # Call PEbA
             os.system(f'python PEbA/peba.py -f1 {samp1_fasta} -f2 {samp2_fasta} '
-                      f' -e1 {samp1[0]} -e2 {samp2[0]} -s {direc}/{seq2}')
+                      f' -e1 {samp1} -e2 {samp2} -s alignments/PEbA/{direc}/{seq2}')
+
+            # Call BLOSUM
+            os.system(f'python PEbA/local_MATRIX.py -f1 {samp1_fasta} -f2 {samp2_fasta} '
+                      f'-sf alignments/blosum/{direc}/{seq2}')
 
 
 def main():
@@ -72,6 +81,7 @@ def main():
 
     # Get sample sequences from each family and align them to each other
     samples = sample_families(families, 0.5)
+    samples = [seq for fam in samples for seq in fam]
     align_samples(samples)
 
 

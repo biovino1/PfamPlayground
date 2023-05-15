@@ -29,6 +29,7 @@ def prot_t5xl_embed(seq: str, tokenizer, encoder, device) -> list:
 
     # Remove special chars, add space after each amino acid so each residue is vectorized
     seq = re.sub(r"[UZOB]", "X", seq).upper()
+    seq = re.sub(r"\.", "", seq)
     seq = [' '.join([*seq])]
 
     # Tokenize, encode, and load sequence
@@ -72,9 +73,6 @@ def embed_fam(path: str, tokenizer, model, device):
 
     # Open each fasta file
     for i, file in enumerate(files):
-
-        if i > 5:
-            break
 
         # Check if embedding already exists
         if os.path.exists(f'prott5_embed/{ref_dir}/{file.split("/")[-1].replace(".fa", ".txt")}'):

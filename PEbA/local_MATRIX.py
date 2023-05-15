@@ -1,20 +1,17 @@
 """================================================================================================
-This script takes two protein sequences of any length and finds the highest scoring local
-alignment between the two using the cosine similarity between embedded amino acids.
+This script takes two protein sequences of varying length and finds the highest scoring local
+alignment between the two using a substitution matrix.
 
 Ben Iovino  01/23/23   VecAligns
 ================================================================================================"""
 
-import os
 import argparse
-import torch
 import numpy as np
-from transformers import T5EncoderModel, T5Tokenizer
-from utility import parse_fasta, write_msf, write_fasta
-from embed_seqs import prot_t5xl_embed
+import blosum as bl
+from utility import parse_fasta, write_msf, parse_matrix, write_fasta
 
 
-def local_align(seq1: str, seq2: str, vecs1: list, vecs2:list, gopen: float, gext: float):
+def local_align(seq1, seq2, subs_matrix, gopen, gext):
     """=============================================================================================
     This function accepts two sequences, creates a matrix corresponding to their lengths, and
     calculates the score of the alignments for each index. A second matrix is scored so that the
@@ -22,11 +19,10 @@ def local_align(seq1: str, seq2: str, vecs1: list, vecs2:list, gopen: float, gex
 
     :param seq1: first sequence
     :param seq2: second sequence
-    :param vecs1: first sequence's amino acid vectors
-    :param vecs2: second sequence's amino acid vectors
+    :param subs_matrix: substitution scoring matrix (i.e. BLOSUM62)
     :param gopen: gap penalty for opening a new gap
     :param gext: gap penalty for extending a gap
-    :return list: scoring and traceback matrices of optimal scores for the SW-alignment of sequences
+    return: scoring and traceback matrices of optimal scores for the SW-alignment of sequences
     ============================================================================================="""
 
     # Initialize scoring and traceback matrix based on sequence lengths
@@ -37,22 +33,21 @@ def local_align(seq1: str, seq2: str, vecs1: list, vecs2:list, gopen: float, gex
 
     # Score matrix by moving through each index
     gap = False
-    for i in range(len(seq1)):
-        seq1_vec = vecs1[i]  # Corresponding amino acid vector in 1st sequence
-        for j in range(len(seq2)):
+    for i, char in enumerate(seq1):
+        seq1_char = char  # Character in 1st sequence
+        for j, char in enumerate(seq2):
+            seq2_char = char  # Character in 2nd sequence
 
             # Preceding scoring matrix values
             diagonal = score_m[i][j]
             horizontal = score_m[i+1][j]
             vertical = score_m[i][j+1]
 
-            # Score pair of residues based off cosine similarity
-            seq2_vec = vecs2[j]  # Corresponding amino acid vector in 2nd sequence
-            cos_sim = np.dot(seq1_vec,seq2_vec)/(np.linalg.norm(seq1_vec)*np.linalg.norm(seq2_vec))
-            cos_sim *= 10
+            # Score pair of residues based off BLOSUM matrix
+            matrix_score = subs_matrix[f'{seq1_char}{seq2_char}']
 
-            # Add to scoring matrix values via scoring method
-            diagonal += cos_sim
+            # Add to matrix values via scoring method
+            diagonal += matrix_score
             if gap is False:  # Apply gap open penalty if there is no gap
                 horizontal += gopen
                 vertical += gopen
@@ -78,10 +73,10 @@ def local_align(seq1: str, seq2: str, vecs1: list, vecs2:list, gopen: float, gex
     return score_m, trace_m
 
 
-def traceback(score_m: list, trace_m: list, seq1: str, seq2: str):
+def traceback(score_m, trace_m, seq1, seq2):
     """=============================================================================================
     This function accepts a scoring and a traceback matrix and two sequences and returns the highest
-    scoring local alignment between the two sequences.
+    scoring local alignment between the two sequences
 
     :param score_m: scoring matrix
     :param trace_m: traceback matrix
@@ -138,61 +133,45 @@ def traceback(score_m: list, trace_m: list, seq1: str, seq2: str):
 
 def main():
     """=============================================================================================
-    Main initializes two protein sequences, embeds them if embeddings are not provided, calls
-    local_align() to obtain the scoring and traceback matrix from local alignment (with cosine
-    similarity as the scoring method), calls traceback() to get the highest scoring local alignment,
-    and then writes the alignment in the desired format to either the console or to a specified file.
+    This function initializes two protein sequences and a scoring matrix, calls SW_align() to get
+    the scoring and traceback matrix from SW alignment, calls traceback() to get the local
+    alignment, and then writes the alignment to a file in the desired format.
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f1', '--file1', type=str, help='First fasta file')
-    parser.add_argument('-f2', '--file2', type=str, help='Second fasta file')
-    parser.add_argument('-e1', '--embed1', type=str, default='n', help='First embedding file')
-    parser.add_argument('-e2', '--embed2', type=str, default='n', help='Second embedding file')
-    parser.add_argument('-go', '--gopen', type=float, default=-11, help='Gap open penalty')
-    parser.add_argument('-ge', '--gext', type=float, default=-1, help='Gap extension penalty')
-    parser.add_argument('-e', '--encoder', type=str, default='ProtT5', help='Encoder used')
+    parser.add_argument('-f1', '--file1', type=str, help='Name of first fasta file')
+    parser.add_argument('-f2', '--file2', type=str, help='Name of second fasta file')
+    parser.add_argument('-go', '--gopen', type=float, default=-11, help='Penalty for opening a gap')
+    parser.add_argument('-ge', '--gext', type=float, default=-1, help='Penalty for extending a gap')
+    parser.add_argument('-m', '--matrix', type=str, default='blosum', help='Substitution matrix to use')
+    parser.add_argument('-s', '--score', type=int, default=45, help='Log odds score of subsitution matrix')
     parser.add_argument('-o', '--output', type=str, default='msf', help='Output format')
-    parser.add_argument('-s', '--savefile', type=str, default='n', help='File to save alignment')
+    parser.add_argument('-sf', '--savefile', type=str, default='n', help='File to save alignment')
     args = parser.parse_args()
 
-    # Load fasta files and ids
+    # Parse fasta files for sequences and ids
     seq1, id1 = parse_fasta(args.file1)
     seq2, id2 = parse_fasta(args.file2)
 
-    # Load models, embed sequences
-    if args.embed1=='n':
-        if os.path.exists('t5_tok.pt'):
-            tokenizer = torch.load('t5_tok.pt')
-        else:
-            tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_uniref50", do_lower_case=False)
-            torch.save(tokenizer, 't5_tok.pt')
-        if os.path.exists('prot_t5_xl.pt'):
-            model = torch.load('prot_t5_xl.pt')
-        else:
-            model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
-            torch.save(model, 'prot_t5_xl.pt')
-        vecs1 = prot_t5xl_embed(seq1, tokenizer, model)
-        vecs2 = prot_t5xl_embed(seq2, tokenizer, model)
-
-    # Load numpy arrays
-    else:
-        vecs1 = np.loadtxt(args.embed1)
-        vecs2 = np.loadtxt(args.embed2)
+    # Intialize scoring matrix
+    if args.matrix == 'blosum':
+        matrix = bl.BLOSUM(args.score)
+    if args.matrix == 'pfasum':
+        matrix = parse_matrix('PFASUM60.txt')
 
     # Align and traceback
-    score_m, trace_m = local_align(seq1, seq2, vecs1, vecs2, args.gopen, args.gext)
+    score_m, trace_m = local_align(seq1, seq2, matrix, args.gopen, args.gext)
     align1, align2, align_score = traceback(score_m, trace_m, seq1, seq2)
 
     # Write alignment score to file
     align_score /= min(len(seq1), len(seq2))  # Normalize by shortest sequence
-    with open('alignments/peba_align_scores.csv', 'a', encoding='utf8') as file:
+    with open('alignments/blosum_align_scores.csv', 'a', encoding='utf8') as file:
         file.write(f'{args.savefile},{align_score}\n')
 
     # Write align based on desired output format
     if args.output == 'msf':
-        write_msf(align1, align2, id1, id2, f'{args.encoder}_Sim',
-                   args.gopen, args.gext, args.savefile)
+        write_msf(align1, align2, id1, id2, args.matrix+str(args.score),
+                args.gopen, args.gext, args.savefile)
     if args.output == 'fa':
         write_fasta(align1, align2, id1, id2, args.savefile)
 
