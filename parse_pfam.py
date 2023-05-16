@@ -11,16 +11,15 @@ import regex as re
 
 def clean_fasta(seq: str, cons: bool) -> str:
     """=============================================================================================
-    This function accepts a fasta sequence with gaps and returns it with no gaps (unless it is a
-    consensus sequence) and split every 50 characters (.fa format).
+    This function accepts a fasta sequence with gaps and returns it in fasta format (newline char
+    every 50 characters).
 
-    :param seq: fasta sequence with gaps
+    :param seq: fasta sequence
     :param cons: flag to indicate if sequence is consensus sequence
-    :return str: fasta sequence without gaps
+    :return str: fasta sequence with newline characters
     ============================================================================================="""
 
     if cons is False:  # All other sequences
-        seq = re.sub(r'[\.]', '', seq)
         seq = '\n'.join(seq[i:i+50] for i in range(0, len(seq), 50))
     else:  # Consensus sequence
         seq = re.sub(r'[\+\-]', 'X', seq)  # replace +/- with X for embedding purposes

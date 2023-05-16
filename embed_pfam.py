@@ -27,7 +27,7 @@ def prot_t5xl_embed(seq: str, tokenizer, encoder, device) -> list:
     return: list of vectors
     ============================================================================================="""
 
-    # Remove special chars, add space after each amino acid so each residue is vectorized
+    # Remove special/gaps chars add space after each amino acid so each residue is vectorized
     seq = re.sub(r"[UZOB]", "X", seq).upper()
     seq = re.sub(r"\.", "", seq)
     seq = [' '.join([*seq])]
