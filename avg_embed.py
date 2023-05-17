@@ -19,8 +19,8 @@ def get_seqs(family: str) -> dict:
     ============================================================================================="""
 
     sequences = {}
-    for file in os.listdir(f'families/{family}'):  # Open each fasta file
-        with open(f'families/{family}/{file}', 'r', encoding='utf8') as file:
+    for file in os.listdir(f'families_gaps/{family}'):  # Open each fasta file
+        with open(f'families_gaps/{family}/{file}', 'r', encoding='utf8') as file:
             for record in SeqIO.parse(file, 'fasta'):
                 sequences[record.id] = record.seq  # Add sequence to dictionary
 
@@ -127,6 +127,10 @@ def main():
     ============================================================================================="""
 
     for family in os.listdir('prott5_embed'):
+
+        # Ignore files that already have an average embedding
+        if 'avg_embed.txt' in os.listdir(f'prott5_embed/{family}'):
+            continue
 
         # Get sequences and their consensus positions
         sequences = get_seqs(family)

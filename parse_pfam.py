@@ -33,7 +33,8 @@ def clean_fasta(seq: str, cons: bool, gaps: bool) -> str:
             seq = re.sub(r'\.', '', seq)
             seq = '\n'.join(seq[i:i+50] for i in range(0, len(seq), 50))
         else:  # Consensus sequence
-            seq = re.sub(r'[\+\-\.]', 'X', seq)  # replace +/- with X for embedding purposes
+            seq = re.sub(r'[\+\-]', 'X', seq)  # replace +/- with X for embedding purposes
+            seq = re.sub(r'\.', '', seq)
             seq = '\n'.join(seq[i:i+50] for i in range(0, len(seq), 50))
 
     return seq
