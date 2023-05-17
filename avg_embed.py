@@ -79,11 +79,11 @@ def get_embed(family: str, sequences: dict) -> dict:
         # Pad embeddings with 0s where there are gaps in the aligned sequences
         count, pad_emb = 0, []
         for pos in sequence:
-            if pos != '.':
-                pad_emb.append(list(embed[count]))
-                count += 1
             if pos == '.':
                 pad_emb.append(0)
+            elif pos != '.':
+                pad_emb.append(embed[count])
+                count += 1
         embeddings[seqid] = pad_emb
 
     return embeddings
@@ -104,20 +104,19 @@ def average_embed(family: str, positions: dict, embeddings: dict) -> list:
     # Create a dict of lists where each list contains the embeddings for a position in the consensus
     seq_embed = {}
     for seqid, position in positions.items():  # Go through positions for each sequence
-        for i, pos in enumerate(position):
-            if pos not in seq_embed:
+        for pos in position:
+            if pos not in seq_embed:  # Initialize key and value
                 seq_embed[pos] = []
-            seq_embed[pos].append(embeddings[seqid][i])  # Add embedding to list for that position
+            seq_embed[pos].append(embeddings[seqid][pos])  # Add embedding to list for that pos
+
+    # Sort dictionary by key (out of order for some reason)
+    seq_embed = dict(sorted(seq_embed.items()))
 
     # Move through each position (list of embeddings) and average them
     avg_embed = []
     for pos, embed in seq_embed.items():
-        for i, emb in enumerate(embed):  # Convert list of embeddings to numpy array
-            embed[i] = np.array(emb)
         avg_embed.append(np.mean(embed, axis=0))  # Find mean for each position (float)
-
-    # Save average embeddings to file
-    np.savetxt(f'prott5_embed/{family}/avg_embed.txt', avg_embed)
+    np.savetxt(f'prott5_embed/{family}/avg_embed.txt', avg_embed, '%.6e')
 
 
 def main():
@@ -127,7 +126,7 @@ def main():
     average_embed() to average the embeddings and save them to file.
     ============================================================================================="""
 
-    for family in os.listdir('families'):
+    for family in os.listdir('prott5_embed'):
 
         # Get sequences and their consensus positions
         sequences = get_seqs(family)
@@ -137,17 +136,6 @@ def main():
         embeddings = get_embed(family, sequences)
         average_embed(family, positions, embeddings)
 
-        # Load embeddings from file
-        embeddings = {}
-        for file in os.listdir(f'prott5_embed/{family}'):
-            with open(f'prott5_embed/{family}/{file}', 'r', encoding='utf8') as file:
-                seqname = file.name.split('/')[-1].split('.')[0]
-                embeddings[seqname] = np.loadtxt(file)
-
-        # Determine cosine similarity between each sequence and the average embedding
-        avg_embed = np.loadtxt(f'prott5_embed/{family}/avg_embed.txt')
-        for seqid, embed in embeddings.items():
-            print(f'{seqid} {np.dot(embed, avg_embed) / (np.linalg.norm(embed) * np.linalg.norm(avg_embed))}')
 
 if __name__ == '__main__':
     main()

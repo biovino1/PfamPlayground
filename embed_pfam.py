@@ -72,7 +72,7 @@ def embed_fam(path: str, tokenizer, model, device):
     files = [f'{path}/{file}' for file in os.listdir(path) if file.endswith('.fa')]
 
     # Open each fasta file
-    for i, file in enumerate(files):
+    for i, file in enumerate(files):  # pylint: disable=W0612
 
         # Check if embedding already exists
         if os.path.exists(f'prott5_embed/{ref_dir}/{file.split("/")[-1].replace(".fa", ".txt")}'):
@@ -119,7 +119,7 @@ def main():
     model.to(device)
 
     # Get names of all family folders and embed all seqs in each one
-    families = [f'families/{fam}' for fam in os.listdir('families')]
+    families = [f'families_nogaps/{fam}' for fam in os.listdir('families_nogaps')]
     for fam in families:
         logging.info('Embedding sequences in %s...', fam)
         embed_fam(fam, tokenizer, model, device)

@@ -5,42 +5,56 @@ sequence in the family. The fasta files are stored in a directory named after th
 Ben Iovino  05/01/23   PfamPlayground
 ================================================================================================"""
 
+import argparse
 import os
 import regex as re
 
 
-def clean_fasta(seq: str, cons: bool) -> str:
+def clean_fasta(seq: str, cons: bool, gaps: bool) -> str:
     """=============================================================================================
     This function accepts a fasta sequence with gaps and returns it in fasta format (newline char
     every 50 characters).
 
     :param seq: fasta sequence
     :param cons: flag to indicate if sequence is consensus sequence
+    :param gaps: flag to indicate if gaps should be included in sequences
     :return str: fasta sequence with newline characters
     ============================================================================================="""
 
-    if cons is False:  # All other sequences
-        seq = '\n'.join(seq[i:i+50] for i in range(0, len(seq), 50))
-    else:  # Consensus sequence
-        seq = re.sub(r'[\+\-]', 'X', seq)  # replace +/- with X for embedding purposes
-        seq = '\n'.join(seq[i:i+50] for i in range(0, len(seq), 50))
+    if gaps is True:  # Gaps included
+        if cons is False:  # All other sequences
+            seq = '\n'.join(seq[i:i+50] for i in range(0, len(seq), 50))
+        else:  # Consensus sequence
+            seq = re.sub(r'[\+\-]', 'X', seq)  # replace +/- with X for embedding purposes
+            seq = '\n'.join(seq[i:i+50] for i in range(0, len(seq), 50))
+
+    else:  # Gaps are not included
+        if cons is False:  # All other sequences
+            seq = re.sub(r'\.', '', seq)
+            seq = '\n'.join(seq[i:i+50] for i in range(0, len(seq), 50))
+        else:  # Consensus sequence
+            seq = re.sub(r'[\+\-\.]', 'X', seq)  # replace +/- with X for embedding purposes
+            seq = '\n'.join(seq[i:i+50] for i in range(0, len(seq), 50))
+
     return seq
 
 
-def write_fasta(family: str, line: str):
+def write_fasta(family: str, line: str, gaps: bool, fam_dir: str):
     """=============================================================================================
     This function accepts a line from the pfam database and writes it to a fasta file.
 
     :param family: name of family that line is from
     :param line: line from pfam database
+    :param gaps: flag to indicate if gaps should be included in sequences
+    :param fam_dir: name of directory to store families
     ============================================================================================="""
 
     # Consenus sequence written slightly differently than other sequences
     if line.startswith('#=GC seq_cons'):
         line = line.split()
-        seq = clean_fasta(line[2], True)
+        seq = clean_fasta(line[2], True, gaps)
         length = len(seq.replace('\n', ''))-seq.count('.')
-        with open(f'families/{family}/consensus.fa', 'w', encoding='utf8') as file:
+        with open(f'{fam_dir}/{family}/consensus.fa', 'w', encoding='utf8') as file:
             file.write(f'>consensus\tlength {length}\n{seq}')
 
     else:  # All other sequences
@@ -48,17 +62,19 @@ def write_fasta(family: str, line: str):
         # Isolate AC number and region
         line = line.split()
         seq_id, region = line[0].split('/')[0], line[0].split('/')[1]
-        seq = clean_fasta(line[1], False)
-        with open(f'families/{family}/{seq_id}.fa', 'w', encoding='utf8') as file:
+        seq = clean_fasta(line[1], False, gaps)
+        with open(f'{fam_dir}/{family}/{seq_id}.fa', 'w', encoding='utf8') as file:
             file.write(f'>{seq_id}\t{region}\n{seq}')
 
 
-def read_pfam(pfam: str):
+def read_pfam(pfam: str, gaps: bool, fam_dir: str):
     """=============================================================================================
     This function accepts a pfam database file and parses individual sequence into a file for each
     sequence in each family. The files are stored in a directory named after the family.
 
     :param pfam: Pfam database file
+    :param gaps: flag to indicate if gaps should be included in sequences
+    :param fam_dir: name of directory to store families
     ============================================================================================="""
 
     with open(pfam, 'r', encoding='utf8', errors='replace') as file:
@@ -72,18 +88,18 @@ def read_pfam(pfam: str):
 
                 # Create a directory for the family
                 if not os.path.exists(family):
-                    os.mkdir(f'families/{family}')
+                    os.mkdir(f'{fam_dir}/{family}')
 
             # If in a family, read sequences and write each one to a file
             elif in_fam:
                 if line.startswith('#'):  # Skip GR, GF, GS lines
                     if line.startswith('#=GC seq_cons'):  # Except for consensus seq
-                        write_fasta(family, line)
+                        write_fasta(family, line, gaps, fam_dir)
                     else: continue
                 if line.startswith('//'):  # End of family
                     in_fam = False
                     continue
-                write_fasta(family, line)  # Write sequence to file
+                write_fasta(family, line, gaps, fam_dir)  # Write sequence to file
 
 
 def main():
@@ -93,9 +109,17 @@ def main():
     files.
     ============================================================================================="""
 
-    # Check if directory for families exist
-    if not os.path.exists('families'):
-        os.mkdir('families')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-gaps', type=bool, default=False, help='flag to include gaps in sequences')
+    args = parser.parse_args()
+
+    # Create directories for families
+    if args.gaps:
+        fam_dir = 'families_gaps'
+        os.mkdir(fam_dir)
+    if not args.gaps:
+        fam_dir = 'families_nogaps'
+        os.mkdir(fam_dir)
 
     # Read Pfam-A.seed if it exists
     if os.path.exists('Pfam-A.seed'):
@@ -105,7 +129,7 @@ def main():
         os.system('wget https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.seed.gz')
         os.system('gunzip Pfam-A.seed.gz')
         pfam = 'Pfam-A.seed'
-    read_pfam(pfam)
+    read_pfam(pfam, args.gaps, fam_dir)
 
 
 if __name__ == "__main__":

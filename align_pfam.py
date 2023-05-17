@@ -46,8 +46,8 @@ def align_samples(samples: list):
 
             # Get fasta files for sample and sequences
             samp1_split, samp2_split = samp1.split('/'), samp2.split('/')
-            samp1_fasta = f'families/{samp1_split[1]}/{samp1_split[2].replace(".txt", ".fa")}'
-            samp2_fasta = f'families/{samp2_split[1]}/{samp2_split[2].replace(".txt", ".fa")}'
+            samp1_fasta = (f'families_nogaps/{samp1_split[1]}/{samp1_split[2].replace(".txt", ".fa")}')
+            samp2_fasta = (f'families_nogaps/{samp2_split[1]}/{samp2_split[2].replace(".txt", ".fa")}')
 
             # Create directory for alignment
             fam1, fam2 = samp1_split[1], samp2_split[1]
@@ -62,7 +62,7 @@ def align_samples(samples: list):
 
             # Call PEbA
             os.system(f'python PEbA/peba.py -f1 {samp1_fasta} -f2 {samp2_fasta} '
-                      f' -e1 {samp1} -e2 {samp2} -s alignments/PEbA/{direc}/{seq2}')
+                      f'-e1 {samp1} -e2 {samp2} -s alignments/PEbA/{direc}/{seq2}')
 
             # Call BLOSUM
             os.system(f'python PEbA/local_MATRIX.py -f1 {samp1_fasta} -f2 {samp2_fasta} '
