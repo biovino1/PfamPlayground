@@ -72,7 +72,7 @@ def align_samples(samples: list, families: list):
         for emb in emb_samp:
             fasta1 = samp
             fasta2 = f'families_nogaps/{emb.split("/")[1]}/consensus.fa'
-            emb1 = f'prott5_embed/{family}/{samp.split("/")[2].replace(".fa", ".txt")}'
+            emb1 = f'prott5_embed/{family}/{samp.split("/")[2].replace(".fa", ".txt")}'  #pylint: disable=W0612
             emb2 = f'{emb}/avg_embed.txt'
 
             # Create directory for alignment
