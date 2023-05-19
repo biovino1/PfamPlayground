@@ -35,7 +35,7 @@ def main():
             os.system(f'time python PEbA/peba.py -f1 {embedding_fasta} -f2 {seq_fasta} -e1 {average_embedding} -e2 {seq} -s alignments/PEbA/{family}/{seq_split[2]}')
 
             # Call BLOSUM
-            #os.system(f'python PEbA/local_MATRIX.py -f1 {embedding_fasta} -f2 {seq_fasta} -sf testing/blosum/{family}/{seq_split[2]}')
+            os.system(f'time python PEbA/local_MATRIX.py -f1 {embedding_fasta} -f2 {seq_fasta} -sf alignments/blosum/{family}/{seq_split[2]}')
 
 
 if __name__ == '__main__':

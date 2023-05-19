@@ -44,7 +44,7 @@ def local_align(seq1, seq2, subs_matrix, gopen, gext):
             vertical = score_m[i][j+1]
 
             # Score pair of residues based off BLOSUM matrix
-            matrix_score = subs_matrix[f'{seq1_char}{seq2_char}']
+            matrix_score = subs_matrix[seq1_char][seq2_char]
 
             # Add to matrix values via scoring method
             diagonal += matrix_score
@@ -144,7 +144,7 @@ def main():
     parser.add_argument('-go', '--gopen', type=float, default=-11, help='Penalty for opening a gap')
     parser.add_argument('-ge', '--gext', type=float, default=-1, help='Penalty for extending a gap')
     parser.add_argument('-m', '--matrix', type=str, default='blosum', help='Substitution matrix to use')
-    parser.add_argument('-s', '--score', type=int, default=45, help='Log odds score of subsitution matrix')
+    parser.add_argument('-s', '--score', type=int, default=62, help='Log odds score of subsitution matrix')
     parser.add_argument('-o', '--output', type=str, default='msf', help='Output format')
     parser.add_argument('-sf', '--savefile', type=str, default='n', help='File to save alignment')
     args = parser.parse_args()

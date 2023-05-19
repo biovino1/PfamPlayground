@@ -29,6 +29,8 @@ def local_align(seq1: str, seq2: str, vecs1: list, vecs2:list, gopen: float, gex
     :return list: scoring and traceback matrices of optimal scores for the SW-alignment of sequences
     ============================================================================================="""
 
+    cos_sim = torch.nn.CosineSimilarity(dim=0)
+
     # Initialize scoring and traceback matrix based on sequence lengths
     row_length = len(seq1)+1
     col_length = len(seq2)+1
@@ -39,6 +41,7 @@ def local_align(seq1: str, seq2: str, vecs1: list, vecs2:list, gopen: float, gex
     gap = False
     for i in range(len(seq1)):
         seq1_vec = vecs1[i]  # Corresponding amino acid vector in 1st sequence
+        seq1_norm = np.linalg.norm(seq1_vec)
         for j in range(len(seq2)):
 
             # Preceding scoring matrix values
@@ -48,7 +51,7 @@ def local_align(seq1: str, seq2: str, vecs1: list, vecs2:list, gopen: float, gex
 
             # Score pair of residues based off cosine similarity
             seq2_vec = vecs2[j]  # Corresponding amino acid vector in 2nd sequence
-            cos_sim = np.dot(seq1_vec,seq2_vec)/(np.linalg.norm(seq1_vec)*np.linalg.norm(seq2_vec))
+            cos_sim = np.dot(seq1_vec,seq2_vec)/(seq1_norm*np.linalg.norm(seq2_vec))
             cos_sim *= 10
 
             # Add to scoring matrix values via scoring method
@@ -160,8 +163,8 @@ def main():
     seq1, id1 = parse_fasta(args.file1)
     seq2, id2 = parse_fasta(args.file2)
 
-    # Load models, embed sequences
-    if args.embed1=='n':
+    # Load models if embeddings not provided
+    if args.embed1=='n' or args.embed2=='n':
         if os.path.exists('t5_tok.pt'):
             tokenizer = torch.load('t5_tok.pt')
         else:
@@ -172,12 +175,15 @@ def main():
         else:
             model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
             torch.save(model, 'prot_t5_xl.pt')
-        vecs1 = prot_t5xl_embed(seq1, tokenizer, model)
-        vecs2 = prot_t5xl_embed(seq2, tokenizer, model)
 
-    # Load numpy arrays
+    # Embed necessary sequences
+    if args.embed1 == 'n':
+        vecs1 = prot_t5xl_embed(seq1, tokenizer, model)
     else:
         vecs1 = np.loadtxt(args.embed1)
+    if args.embed2 == 'n':
+        vecs2 = prot_t5xl_embed(seq2, tokenizer, model)
+    else:
         vecs2 = np.loadtxt(args.embed2)
 
     # Align and traceback
