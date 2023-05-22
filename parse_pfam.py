@@ -5,7 +5,6 @@ sequence in the family. The fasta files are stored in a directory named after th
 Ben Iovino  05/01/23   PfamPlayground
 ================================================================================================"""
 
-import argparse
 import os
 import regex as re
 
@@ -110,18 +109,6 @@ def main():
     files.
     ============================================================================================="""
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-gaps', type=bool, default=False, help='flag to include gaps in sequences')
-    args = parser.parse_args()
-
-    # Create directories for families
-    if args.gaps:
-        fam_dir = 'families_gaps'
-        os.mkdir(fam_dir)
-    if not args.gaps:
-        fam_dir = 'families_nogaps'
-        os.mkdir(fam_dir)
-
     # Read Pfam-A.seed if it exists
     if os.path.exists('Pfam-A.seed'):
         pfam = 'Pfam-A.seed'
@@ -130,7 +117,20 @@ def main():
         os.system('wget https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.seed.gz')
         os.system('gunzip Pfam-A.seed.gz')
         pfam = 'Pfam-A.seed'
-    read_pfam(pfam, args.gaps, fam_dir)
+
+    # Create directories for families
+    if not os.path.exists('families_gaps'):
+        os.mkdir('families_gaps')
+    if not os.path.exists('families_nogaps'):
+        os.mkdir('families_nogaps')
+
+    # Parse once with gaps and once without
+    for gaps in [True, False]:
+        if gaps is True:
+            fam_dir = 'families_gaps'
+        else:
+            fam_dir = 'families_nogaps'
+        read_pfam(pfam, gaps, fam_dir)
 
 
 if __name__ == "__main__":

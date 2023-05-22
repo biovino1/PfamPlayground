@@ -98,7 +98,7 @@ def draw_roc(scores: list):
         tprs.append(tpr)
         fprs.append(fpr)
 
-    # Find closest cutoff where TPR = 1 and FPR = 0 (assuming it exists)
+    # Find closest cutoff to TPR=1 and FPR=0
     for i in range(len(tprs)):  # pylint: disable=C0200
         if tprs[i] == 1.0 and fprs[i] == 0:
             print(f'cutoff: {cutoffs[i]}')
@@ -110,7 +110,7 @@ def draw_roc(scores: list):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
     plt.title('ROC Curve')
-    plt.show()
+    plt.savefig('roc_curve.png')
 
 
 def main():

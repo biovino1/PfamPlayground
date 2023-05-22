@@ -64,6 +64,8 @@ def get_embed(family: str, sequences: dict) -> dict:
     :return dict: seq id is key with list of embeddings as value
     ============================================================================================="""
 
+    print(family)
+
     # Load embeddings from file
     embeddings = {}
     for file in os.listdir(f'prott5_embed/{family}'):
@@ -71,8 +73,12 @@ def get_embed(family: str, sequences: dict) -> dict:
             seqname = file.name.split('/')[-1].split('.')[0]  # To match with sequences dict keys
             embeddings[seqname] = np.loadtxt(file)
 
+    # Remove avg_embed if it exists from keys
+    if 'avg_embed' in embeddings.keys():
+        del embeddings['avg_embed']
+
     # Pad embeddings to match length of consensus sequence
-    del embeddings['consensus']
+    del embeddings['consensus']  # Remove consensus from embeddings
     for seqid, embed in embeddings.items():
         sequence = sequences[seqid]
 
