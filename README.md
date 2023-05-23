@@ -20,5 +20,6 @@ align_pfam.py uses PEbA to align sequences and reports the alignment score for e
 read_scores.py reads the alignment scores and plots their distribution.
 
 anchor_pos.py compares the embeddings for each sequence in a family to the average embedding for that family
-by calculating the cosine similarity between each embedding and the average embedding. It then determines
-which positions in the sequence have the lowest v
+by calculating the cosine similarity between each embedding and the average embedding. Regions of high
+similarity are determined by finding consecutive amino acids that have a cosine similarity above a threshold.
+The highest scoring regions are used as anchors for the sequence, reducing the size of the sequence.

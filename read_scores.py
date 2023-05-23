@@ -98,10 +98,17 @@ def draw_roc(scores: list):
         tprs.append(tpr)
         fprs.append(fpr)
 
-    # Find closest cutoff to TPR=1 and FPR=0
-    for i in range(len(tprs)):  # pylint: disable=C0200
-        if tprs[i] == 1.0 and fprs[i] == 0:
-            print(f'cutoff: {cutoffs[i]}')
+    # Reverse lists so they are in order
+    tprs.reverse()
+    fprs.reverse()
+
+    # Detect when FPR goes from 0 to any value higher
+    # AUC1 -> fraction of true homologs found until first non homolog (FPR > 0)
+    cutoff, co_tpr, co_fpr = 0, 0, 0
+    for i, fpr in enumerate(fprs):
+        if fpr > 0:
+            cutoff, co_tpr, co_fpr = cutoffs[i], tprs[i], fpr
+            print(f'cutoff: {cutoff}, tpr: {co_tpr}, fpr: {co_fpr}')
             break
 
     # Draw ROC curve
