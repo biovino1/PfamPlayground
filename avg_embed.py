@@ -64,8 +64,6 @@ def get_embed(family: str, sequences: dict) -> dict:
     :return dict: seq id is key with list of embeddings as value
     ============================================================================================="""
 
-    print(family)
-
     # Load embeddings from file
     embeddings = {}
     for file in os.listdir(f'prott5_embed/{family}'):

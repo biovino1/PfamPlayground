@@ -9,6 +9,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from avg_embed import get_seqs, cons_pos, get_embed
+from math import ceil
 
 
 def embed_pos(positions: dict, embeddings: dict) -> list:
@@ -50,6 +51,7 @@ def get_cos_sim(family: str, embeddings: dict) -> tuple[dict, list]:
     :param family: name of Pfam family
     :param embeddings: dict where position is key with list of embeddings from each seq as value
     :return dict: position is key with list of cosine similarities as value
+    :return list: list of average cosine similarities for each position
     ============================================================================================="""
 
     # Get average embedding
@@ -105,17 +107,16 @@ def plot_regions(family: str, cos_sim: dict, avg_cos: list):
     axs[1].set_ylabel('Cosine Similarity')
 
     # Display figure
-    #plt.show()
+    plt.show()
 
 
-def determine_regions(cos_sim: dict, avg_cos: list) -> dict:
+def determine_regions(avg_cos: list) -> dict:
     """=============================================================================================
-    This function accepts a dictionary of cosine similarities and returns a dictionary of regions,
-    each one being consecutive positions with relatively high cosine similarity. A region is defined
-    as having at least 2 positions with cosine similarity greater than the mean plus one standard
+    This function accepts list of cosine similarities and returns a dictionary of regions, each one
+    being consecutive positions with relatively high cosine similarity. A region is defined as
+    having at least 2 positions with cosine similarity greater than the mean plus one standard
     deviation.
 
-    :param cos_sim: dict where position is key with list of embeddings from each seq as value
     :param avg_cos: list of average cosine similarities for each position
     :return dict: region is key with list of positions and average cosine similarity as value
     ============================================================================================="""
@@ -161,12 +162,42 @@ def filter_regions(regions: dict) -> dict:
     :return dict: region is key with list of positions and average cosine similarity as value
     ============================================================================================="""
 
-    # Sort by average cosine similarity, highest to lowest
+    # Sort by average cosine similarity, highest to lowest and select top 3
     regions = dict(sorted(regions.items(), key=lambda item: item[1][1], reverse=True))
-
-    # Select top 3 regions
     regions = dict(list(regions.items())[:3])
-    print(regions)
+
+    return regions
+
+
+def get_anchors(family: str, regions: dict):
+    """=============================================================================================
+    This function accepts a family to load the average embedding and a dict of regions and writes to
+    a file the anchor embeddings for each region.
+
+    :param family: name of Pfam family
+    :param regions: dict where region is key with list of positions and average cosine similarity
+    ============================================================================================="""
+
+    # Get average embedding
+    avg_embed = np.loadtxt(f'prott5_embed/{family}/avg_embed.txt')
+
+    # For each set of regions, find anchor residues
+    anchors_pos = []
+    for reg in regions.values():
+
+        # Get middle position
+        mid = ceil((len(reg[0]) - 1)/2)
+        anchors_pos.append(reg[0][mid])
+    
+    # Grab embeddings from average embedding
+    anchor_embed = []
+    for pos in anchors_pos:
+        anchor_embed.append(avg_embed[pos])
+
+    # Save anchor embeddings to file
+    if not os.path.exists(f'anchors/{family}'):
+        os.makedirs(f'anchors/{family}')
+    np.savetxt(f'anchors/{family}/anchor_embed.txt', anchor_embed, '%.6e')
 
 
 def main():
@@ -182,10 +213,13 @@ def main():
         cons_embed = embed_pos(positions, embeddings)
 
         # Find regions of high cosine similarity to consensus embedding
-        cos_sim, avg_cos = get_cos_sim(family, cons_embed)
-        regions = determine_regions(cos_sim, avg_cos)
-        filter_regions(regions)
-        plot_regions(family, cos_sim, avg_cos)
+        cos_sim, avg_cos = get_cos_sim(family, cons_embed)  #pylint: disable=W0612
+        regions = determine_regions(avg_cos)
+        filt_regions = filter_regions(regions)
+
+        # Get anchor residues (embedding) for each sequence
+        get_anchors(family, filt_regions)
+
 
 
 if __name__ == '__main__':

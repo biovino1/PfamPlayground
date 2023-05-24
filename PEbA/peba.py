@@ -29,8 +29,6 @@ def local_align(seq1: str, seq2: str, vecs1: list, vecs2:list, gopen: float, gex
     :return list: scoring and traceback matrices of optimal scores for the SW-alignment of sequences
     ============================================================================================="""
 
-    cos_sim = torch.nn.CosineSimilarity(dim=0)
-
     # Initialize scoring and traceback matrix based on sequence lengths
     row_length = len(seq1)+1
     col_length = len(seq2)+1

@@ -6,7 +6,6 @@ after the sequence and alignment scores are saved in a csv file.
 Ben Iovino  05/09/23   PfamPlayground
 ================================================================================================"""
 
-
 import os
 from random import sample
 
@@ -79,7 +78,7 @@ def align_samples(samples: list, families: list):
             fam1, fam2 = samp.split('/')[1], emb.split('/')[1]
             seq1 = samp.split('/')[2].strip('.fa')
             direc = f'{fam1}/{seq1}-{fam2}'
-            
+
             # Create directories for PEbA and BLOSUM alignments
             if not os.path.exists(f'alignments/PEbA/{direc}'):
                 os.makedirs(f'alignments/PEbA/{direc}')
@@ -93,45 +92,6 @@ def align_samples(samples: list, families: list):
             # Call BLOSUM
             os.system(f'python PEbA/local_MATRIX.py -f1 {fasta1} -f2 {fasta2} '
                       f'-sf alignments/blosum/{direc}/align.msf')
-
-
-def align_samples2(samples: list):
-    """=============================================================================================
-    This function accepts a list of fasta files and aligns each sequence to each other using PEbA
-    and BLOSUM to get the alignment score from both.
-
-    :param samples: list of fasta files sampled from Pfam families
-    ============================================================================================="""
-
-    # Align sample sequences to each other
-    for samp1 in samples:
-        for samp2 in samples:
-            if samp1 == samp2:  # Skip if same sample
-                continue
-
-            # Get fasta files for sample and sequences
-            samp1_split, samp2_split = samp1.split('/'), samp2.split('/')
-            samp1_fasta = (f'families_nogaps/{samp1_split[1]}/{samp1_split[2].replace(".txt", ".fa")}')
-            samp2_fasta = (f'families_nogaps/{samp2_split[1]}/{samp2_split[2].replace(".txt", ".fa")}')
-
-            # Create directory for alignment
-            fam1, fam2 = samp1_split[1], samp2_split[1]
-            seq1, seq2 = samp1_split[2].strip('.txt'), samp2_split[2].strip('.txt')
-            direc = f'{fam1}/{seq1}-{fam2}'
-
-            # Create directories for PEbA and BLOSUM alignments
-            if not os.path.exists(f'alignments/PEbA/{direc}'):
-                os.makedirs(f'alignments/PEbA/{direc}')
-            if not os.path.exists(f'alignments/blosum/{direc}'):
-                os.makedirs(f'alignments/blosum/{direc}')
-
-            # Call PEbA
-            os.system(f'python PEbA/peba.py -f1 {samp1_fasta} -f2 {samp2_fasta} '
-                      f'-e1 {samp1} -e2 {samp2} -s alignments/PEbA/{direc}/{seq2}')
-
-            # Call BLOSUM
-            os.system(f'python PEbA/local_MATRIX.py -f1 {samp1_fasta} -f2 {samp2_fasta} '
-                      f'-sf alignments/blosum/{direc}/{seq2}')
 
 
 def main():
