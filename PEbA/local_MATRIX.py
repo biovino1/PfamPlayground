@@ -165,7 +165,7 @@ def main():
 
     # Write alignment score to file
     align_score /= min(len(seq1), len(seq2))  # Normalize by shortest sequence
-    with open('alignments/blosum_align_scores.csv', 'a', encoding='utf8') as file:
+    with open('Data/alignments/blosum_align_scores.csv', 'a', encoding='utf8') as file:
         file.write(f'{args.savefile},{align_score}\n')
 
     # Write align based on desired output format

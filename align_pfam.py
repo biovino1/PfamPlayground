@@ -26,7 +26,7 @@ def sample_sequences(families: list, sample_size: int):
     # Sample one sequence from each family
     samples = []
     for family in fam_samp:
-        family = family.replace('avg_embed/', 'families_nogaps/')
+        family = family.replace('Data/avg_embed/', 'Data/families_nogaps/')
         seqs = [f'{family}/{file}' for file in os.listdir(family)]
         samples.append(sample(seqs, 1)[0])
     return samples
@@ -44,7 +44,7 @@ def sample_embeddings(fam: str, families: list, sample_size: int):
     ============================================================================================="""
 
     # Retrieve emb for given family and randomly sample the rest
-    fam_emb = f'avg_embed/{fam}'
+    fam_emb = f'Data/avg_embed/{fam}'
     fam_samp = sample(families, sample_size-1)
     fam_samp.append(fam_emb)
 
@@ -62,16 +62,17 @@ def align_samples(samples: list, families: list):
 
     # Align sample sequences to sampled embeddings
     for samp in samples:
-        family = samp.split('/')[1]
-        emb_samp = sample_embeddings(family, families, 100)
+        family = samp.split('/')[2]
+        emb_samp = sample_embeddings(family, families, 1)
 
         # Need four files to run PEbA
         # Samp -> fasta1; families_nogaps/{family}/consensus.fa -> fasta2
         # prott5_embed/{family}/{seq}.txt -> emb1; {emb}/avg_embed.txt -> emb2
         for emb in emb_samp:
+            print(emb)
             fasta1 = samp
-            fasta2 = f'families_nogaps/{emb.split("/")[1]}/consensus.fa'
-            emb1 = f'prott5_embed/{family}/{samp.split("/")[2].replace(".fa", ".txt")}'  #pylint: disable=W0612
+            fasta2 = f'Data/families_nogaps/{emb.split("/")[2]}/consensus.fa'
+            emb1 = f'Data/prott5_embed/{family}/{samp.split("/")[2].replace(".fa", ".txt")}'  #pylint: disable=W0612
             emb2 = f'{emb}/avg_embed.txt'
 
             # Create directory for alignment
@@ -80,18 +81,18 @@ def align_samples(samples: list, families: list):
             direc = f'{fam1}/{seq1}-{fam2}'
 
             # Create directories for PEbA and BLOSUM alignments
-            if not os.path.exists(f'alignments/PEbA/{direc}'):
-                os.makedirs(f'alignments/PEbA/{direc}')
-            if not os.path.exists(f'alignments/blosum/{direc}'):
-                os.makedirs(f'alignments/blosum/{direc}')
+            if not os.path.exists(f'Data/alignments/PEbA/{direc}'):
+                os.makedirs(f'Data/alignments/PEbA/{direc}')
+            if not os.path.exists(f'Data/alignments/blosum/{direc}'):
+                os.makedirs(f'Data/alignments/blosum/{direc}')
 
             # Call PEbA
             os.system(f'python PEbA/peba.py -f1 {fasta1} -f2 {fasta2} '
-                      f'-e2 {emb2} -s alignments/PEbA/{direc}/align.msf')
+                      f'-e2 {emb2} -s Data/alignments/PEbA/{direc}/align.msf')
 
             # Call BLOSUM
             os.system(f'python PEbA/local_MATRIX.py -f1 {fasta1} -f2 {fasta2} '
-                      f'-sf alignments/blosum/{direc}/align.msf')
+                      f'-sf Data/alignments/blosum/{direc}/align.msf')
 
 
 def main():
@@ -101,11 +102,11 @@ def main():
     ============================================================================================="""
 
     # Get families from embedding directory
-    emb_dir = 'avg_embed'
+    emb_dir = 'Data/avg_embed'
     families = [f'{emb_dir}/{file}' for file in os.listdir(emb_dir)]
 
     # Get sample sequences from each family and align them to each other
-    samples = sample_sequences(families, 100)
+    samples = sample_sequences(families, 1)
     align_samples(samples, families)
 
 

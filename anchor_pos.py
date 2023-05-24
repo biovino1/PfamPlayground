@@ -55,7 +55,7 @@ def get_cos_sim(family: str, embeddings: dict) -> tuple[dict, list]:
     ============================================================================================="""
 
     # Get average embedding
-    avg_embed = np.loadtxt(f'prott5_embed/{family}/avg_embed.txt')
+    avg_embed = np.loadtxt(f'Data/avg_embed/{family}/avg_embed.txt')
 
     # Get cosine similarity between average embedding and each position
     cos_sim = {}
@@ -179,7 +179,7 @@ def get_anchors(family: str, regions: dict):
     ============================================================================================="""
 
     # Get average embedding
-    avg_embed = np.loadtxt(f'prott5_embed/{family}/avg_embed.txt')
+    avg_embed = np.loadtxt(f'Data/avg_embed/{family}/avg_embed.txt')
 
     # For each set of regions, find anchor residues
     anchors_pos = []
@@ -188,21 +188,21 @@ def get_anchors(family: str, regions: dict):
         # Get middle position
         mid = ceil((len(reg[0]) - 1)/2)
         anchors_pos.append(reg[0][mid])
-    
+
     # Grab embeddings from average embedding
     anchor_embed = []
     for pos in anchors_pos:
         anchor_embed.append(avg_embed[pos])
 
     # Save anchor embeddings to file
-    if not os.path.exists(f'anchors/{family}'):
-        os.makedirs(f'anchors/{family}')
-    np.savetxt(f'anchors/{family}/anchor_embed.txt', anchor_embed, '%.6e')
+    if not os.path.exists(f'Data/anchors/{family}'):
+        os.makedirs(f'Data/anchors/{family}')
+    np.savetxt(f'Data/anchors/{family}/anchor_embed.txt', anchor_embed, '%.6e')
 
 
 def main():
 
-    for family in os.listdir('prott5_embed'):
+    for family in os.listdir('Data/prott5_embed'):
 
         # Get sequences and their consensus positions
         sequences = get_seqs(family)

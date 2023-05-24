@@ -126,7 +126,7 @@ def main():
     ============================================================================================="""
 
     # Read csv with align scores and determine homology
-    scores = read_scores('alignments/peba_align_scores.csv')
+    scores = read_scores('Data/alignments/peba_align_scores.csv')
     draw_roc(scores)
 
 

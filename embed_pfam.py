@@ -12,7 +12,7 @@ import numpy as np
 import regex as re
 from transformers import T5EncoderModel, T5Tokenizer
 
-logging.basicConfig(filename='embed_pfam.log', level=logging.INFO, format='%(asctime)s %(message)s')
+logging.basicConfig(filename='Data/embed_pfam.log', level=logging.INFO, format='%(asctime)s %(message)s')
 
 
 def prot_t5xl_embed(seq: str, tokenizer, encoder, device) -> list:
@@ -65,8 +65,8 @@ def embed_fam(path: str, tokenizer, model, device):
 
     # Get last directory in path
     ref_dir = path.rsplit('/', maxsplit=1)[-1]
-    if not os.path.isdir(f'prott5_embed/{ref_dir}'):
-        os.makedirs(f'prott5_embed/{ref_dir}')
+    if not os.path.isdir(f'Data/prott5_embed/{ref_dir}'):
+        os.makedirs(f'Data/prott5_embed/{ref_dir}')
 
     # Get fasta files in ref_dir
     files = [f'{path}/{file}' for file in os.listdir(path) if file.endswith('.fa')]
@@ -75,7 +75,7 @@ def embed_fam(path: str, tokenizer, model, device):
     for i, file in enumerate(files):  # pylint: disable=W0612
 
         # Check if embedding already exists
-        if os.path.exists(f'prott5_embed/{ref_dir}/{file.split("/")[-1].replace(".fa", ".txt")}'):
+        if os.path.exists(f'Data/prott5_embed/{ref_dir}/{file.split("/")[-1].replace(".fa", ".txt")}'):
             logging.info('Embedding for %s already exists. Skipping...', file)
             continue
 
@@ -90,7 +90,7 @@ def embed_fam(path: str, tokenizer, model, device):
 
             # Save embedding as numpy array
             filename = file.rsplit('/', maxsplit=1)[-1].replace('.fa', '.txt')
-            with open(f'prott5_embed/{ref_dir}/{filename}', 'w', encoding='utf8') as f:
+            with open(f'Data/prott5_embed/{ref_dir}/{filename}', 'w', encoding='utf8') as f:
                 np.savetxt(f, seq_emd, fmt='%4.6f', delimiter=' ')
 
     logging.info('Finished embedding sequences in %s\n', ref_dir)
@@ -103,23 +103,23 @@ def main():
     ============================================================================================="""
 
     logging.info('Loading tokenizer and encoder models...\n')
-    if os.path.exists('t5_tok.pt'):
-        tokenizer = torch.load('t5_tok.pt')
+    if os.path.exists('Data/t5_tok.pt'):
+        tokenizer = torch.load('Data/t5_tok.pt')
     else:
         tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_uniref50", do_lower_case=False)
-        torch.save(tokenizer, 't5_tok.pt')
-    if os.path.exists('prot_t5_xl.pt'):
-        model = torch.load('prot_t5_xl.pt')
+        torch.save(tokenizer, 'Data/t5_tok.pt')
+    if os.path.exists('Data/prot_t5_xl.pt'):
+        model = torch.load('Data/prot_t5_xl.pt')
     else:
         model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
-        torch.save(model, 'prot_t5_xl.pt')
+        torch.save(model, 'Data/prot_t5_xl.pt')
 
     # Load model to gpu if available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
     model.to(device)
 
     # Get names of all family folders and embed all seqs in each one
-    families = [f'families_nogaps/{fam}' for fam in os.listdir('families_nogaps')]
+    families = [f'Data/families_nogaps/{fam}' for fam in os.listdir('Data/families_nogaps')]
     for fam in families:
         logging.info('Embedding sequences in %s...', fam)
         embed_fam(fam, tokenizer, model, device)

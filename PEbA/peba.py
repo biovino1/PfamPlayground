@@ -163,16 +163,16 @@ def main():
 
     # Load models if embeddings not provided
     if args.embed1=='n' or args.embed2=='n':
-        if os.path.exists('t5_tok.pt'):
-            tokenizer = torch.load('t5_tok.pt')
+        if os.path.exists('Data/t5_tok.pt'):
+            tokenizer = torch.load('Data/t5_tok.pt')
         else:
             tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_uniref50", do_lower_case=False)
-            torch.save(tokenizer, 't5_tok.pt')
-        if os.path.exists('prot_t5_xl.pt'):
-            model = torch.load('prot_t5_xl.pt')
+            torch.save(tokenizer, 'Data/t5_tok.pt')
+        if os.path.exists('Data/prot_t5_xl.pt'):
+            model = torch.load('Data/prot_t5_xl.pt')
         else:
             model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
-            torch.save(model, 'prot_t5_xl.pt')
+            torch.save(model, 'Data/prot_t5_xl.pt')
 
     # Embed necessary sequences
     if args.embed1 == 'n':
@@ -190,7 +190,7 @@ def main():
 
     # Write alignment score to file
     align_score /= min(len(seq1), len(seq2))  # Normalize by shortest sequence
-    with open('alignments/peba_align_scores.csv', 'a', encoding='utf8') as file:
+    with open('Data/alignments/peba_align_scores.csv', 'a', encoding='utf8') as file:
         file.write(f'{args.savefile},{align_score}\n')
 
     # Write align based on desired output format

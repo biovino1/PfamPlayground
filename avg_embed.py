@@ -19,8 +19,8 @@ def get_seqs(family: str) -> dict:
     ============================================================================================="""
 
     sequences = {}
-    for file in os.listdir(f'families_gaps/{family}'):  # Open each fasta file
-        with open(f'families_gaps/{family}/{file}', 'r', encoding='utf8') as file:
+    for file in os.listdir(f'Data/families_gaps/{family}'):  # Open each fasta file
+        with open(f'Data/families_gaps/{family}/{file}', 'r', encoding='utf8') as file:
             for record in SeqIO.parse(file, 'fasta'):
                 sequences[record.id] = record.seq  # Add sequence to dictionary
 
@@ -66,8 +66,8 @@ def get_embed(family: str, sequences: dict) -> dict:
 
     # Load embeddings from file
     embeddings = {}
-    for file in os.listdir(f'prott5_embed/{family}'):
-        with open(f'prott5_embed/{family}/{file}', 'r', encoding='utf8') as file:
+    for file in os.listdir(f'Data/prott5_embed/{family}'):
+        with open(f'Data/prott5_embed/{family}/{file}', 'r', encoding='utf8') as file:
             seqname = file.name.split('/')[-1].split('.')[0]  # To match with sequences dict keys
             embeddings[seqname] = np.loadtxt(file)
 
@@ -120,7 +120,11 @@ def average_embed(family: str, positions: dict, embeddings: dict) -> list:
     avg_embed = []
     for pos, embed in seq_embed.items():
         avg_embed.append(np.mean(embed, axis=0))  # Find mean for each position (float)
-    np.savetxt(f'prott5_embed/{family}/avg_embed.txt', avg_embed, '%.6e')
+
+    # Save to file
+    if not os.path.exists(f'Data/avg_embed/{family}'):
+        os.makedirs(f'Data/avg_embed/{family}')
+    np.savetxt(f'Data/avg_embed/{family}/avg_embed.txt', avg_embed, '%.6e')
 
 
 def main():
@@ -130,10 +134,10 @@ def main():
     average_embed() to average the embeddings and save them to file.
     ============================================================================================="""
 
-    for family in os.listdir('prott5_embed'):
+    for family in os.listdir('Data/prott5_embed'):
 
         # Ignore files that already have an average embedding
-        if 'avg_embed.txt' in os.listdir(f'prott5_embed/{family}'):
+        if 'avg_embed.txt' in os.listdir(f'Data/prott5_embed/{family}'):
             continue
 
         # Get sequences and their consensus positions
