@@ -42,7 +42,7 @@ def embed_pos(positions: dict, embeddings: dict) -> list:
     return cons_embed
 
 
-def get_cos_sim(family: str, embeddings: dict) -> tuple[dict, list]:
+def get_cos_sim(family: str, embeddings: dict) -> list:
     """=============================================================================================
     This function accepts a dictionary of embeddings corresponding to positions in the consensus
     sequence and returns a dictionary of cosine similarities between the average embedding and each
@@ -50,7 +50,6 @@ def get_cos_sim(family: str, embeddings: dict) -> tuple[dict, list]:
 
     :param family: name of Pfam family
     :param embeddings: dict where position is key with list of embeddings from each seq as value
-    :return dict: position is key with list of cosine similarities as value
     :return list: list of average cosine similarities for each position
     ============================================================================================="""
 
@@ -72,7 +71,7 @@ def get_cos_sim(family: str, embeddings: dict) -> tuple[dict, list]:
         # Get average cosine similarity
         avg_cos.append(np.mean(cos_sim[pos]))
 
-    return cos_sim, avg_cos
+    return avg_cos
 
 
 def plot_regions(family: str, cos_sim: dict, avg_cos: list):
@@ -201,6 +200,10 @@ def get_anchors(family: str, regions: dict):
 
 
 def main():
+    """=============================================================================================
+    Main goes through each family that has embeddings and finds anchor residues for each family
+    based on cosine similarity to the average embedding.
+    ============================================================================================="""
 
     for family in os.listdir('Data/prott5_embed'):
 
@@ -213,13 +216,12 @@ def main():
         cons_embed = embed_pos(positions, embeddings)
 
         # Find regions of high cosine similarity to consensus embedding
-        cos_sim, avg_cos = get_cos_sim(family, cons_embed)  #pylint: disable=W0612
+        avg_cos = get_cos_sim(family, cons_embed)  #pylint: disable=W0612
         regions = determine_regions(avg_cos)
         filt_regions = filter_regions(regions)
 
         # Get anchor residues (embedding) for each sequence
         get_anchors(family, filt_regions)
-
 
 
 if __name__ == '__main__':

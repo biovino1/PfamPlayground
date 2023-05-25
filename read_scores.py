@@ -103,10 +103,13 @@ def draw_roc(scores: list):
     fprs.reverse()
 
     # Detect when FPR goes from 0 to any value higher
-    # AUC1 -> fraction of true homologs found until first non homolog (FPR > 0)
+    # AUC1 -> fraction of true homologs found until first 100 non homolog (FPR > 0)
+    auc100 = 0
     cutoff, co_tpr, co_fpr = 0, 0, 0
     for i, fpr in enumerate(fprs):
         if fpr > 0:
+            auc100 += 1
+        if auc100 == 99:
             cutoff, co_tpr, co_fpr = cutoffs[i], tprs[i], fpr
             print(f'cutoff: {cutoff}, tpr: {co_tpr}, fpr: {co_fpr}')
             break
