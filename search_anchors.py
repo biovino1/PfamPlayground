@@ -9,7 +9,7 @@ import os
 import numpy as np
 
 
-def query_search(qfamily, query: np.ndarray, anchors: list) -> str:
+def query_search(sequence, qfamily, query: np.ndarray, anchors: list) -> str:
     """=============================================================================================
     This function takes a query embedding, a directory of anchor embeddings, and finds the most
     similar anchor embedding based on cosine similarity.
@@ -24,12 +24,6 @@ def query_search(qfamily, query: np.ndarray, anchors: list) -> str:
     for family in os.listdir('Data/anchors'):
         anchors = f'Data/anchors/{family}/anchor_embed.txt'
         anchors_embed = np.loadtxt(anchors)
-
-        # Ignore these for now
-        if len(anchors_embed) == 0:
-            continue
-        if len(anchors_embed) == 1024:
-            continue
 
         if family not in sims:
             sims[family] = []
@@ -47,32 +41,49 @@ def query_search(qfamily, query: np.ndarray, anchors: list) -> str:
         # Average similarities
         sims[family] = np.mean(sims[family])
 
+    # Get family with max similarity
     result = max(sims, key=sims.get)
+    result1_sim = sims[result]
+    rcopy = sims.copy()
+    rcopy.pop(result)
+
+    # Calculate difference between max and second max
+    result2 = max(rcopy, key=sims.get)
+    result2_sim = sims[result2]
+    difference = result1_sim - result2_sim
+
+    # Print if query family is not result family
     if qfamily != result:
         if qfamily in sims:
-            print(qfamily, result, sims[qfamily], sims[result])
+            print(sequence, qfamily, result, sims[qfamily], sims[result])
 
     # Return key with highest average similarity
-    return result
+    return result, difference
 
 
 def main():
 
     correct = 0
     false = 0
+    tdiff = 0
+    runs = 0
 
     # Load query sequences
     embeddings = 'Data/prott5_embed/'
     for family in os.listdir(embeddings):
         for sequence in os.listdir(f'{embeddings}/{family}'):
+            if sequence == 'consensus.txt':
+                continue
             query = np.loadtxt(f'{embeddings}/{family}/{sequence}')
-            result = query_search(family, query, 'Data/anchors')
+            result, diff = query_search(sequence, family, query, 'Data/anchors')
+            tdiff += abs(diff)
             if result == family:
                 correct += 1
             else:
                 false += 1
+            runs += 1
 
-    print(correct, false)
+    print(correct, false, tdiff/runs)
 
 
 if __name__ == '__main__':

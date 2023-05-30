@@ -109,6 +109,46 @@ def plot_regions(family: str, cos_sim: dict, avg_cos: list):
     plt.show()
 
 
+def filter_regions(regions: dict) -> dict:
+    """=============================================================================================
+    This function accepts a dictionary of regions and returns a filtered dictionary of regions.
+
+    :param regions: dict where region is key with list of positions and average cosine similarity
+    :return dict: region is key with list of positions and average cosine similarity as value
+    ============================================================================================="""
+
+    # Remove regions that are close to beginning or end of sequence
+    del_reg = []
+    #for reg, pos in regions.items():
+        #if pos[0][0] < 3 or pos[0][-1] > (pos[1] - 3):
+            #del_reg.append(reg)
+
+    # Sort by average cosine similarity, highest to lowest, so we remove lower ones first
+    regions = dict(sorted(regions.items(), key=lambda item: item[1][2], reverse=True))
+    mids = {}
+    for reg, pos in regions.items():
+        mids[reg] = pos[0][ceil((len(pos[0]) - 1)/2)]  # Find middle position for each region
+
+    # Go through middle positions and remove ones that are < 3 positions away
+    for reg1, pos1 in mids.items():
+        for reg2, pos2 in mids.items():
+            if reg1 != reg2 and abs(pos1 - pos2) < 4 and reg2 not in del_reg and reg1 not in del_reg:
+                del_reg.append(reg2)  # Second region is less similar than first, remove it
+
+    print(mids)
+    if del_reg:
+        print(del_reg)
+    for reg in del_reg:
+        print(regions[reg])
+
+    # Can't delete while iterating through dictionary
+    del_reg = list(set(del_reg))
+    for reg in del_reg:
+        del regions[reg]
+
+    return regions
+
+
 def determine_regions(avg_cos: list) -> dict:
     """=============================================================================================
     This function accepts list of cosine similarities and returns a dictionary of regions, each one
@@ -120,51 +160,46 @@ def determine_regions(avg_cos: list) -> dict:
     :return dict: region is key with list of positions and average cosine similarity as value
     ============================================================================================="""
 
-    # Base high cosine similarity off of mean cosine similarity
-    #print(f'Mean cos_sim: {np.mean(avg_cos)}')
-    #print(f'Std cos_sim: {np.var(avg_cos)}')
-    #print(len(cos_sim.keys()))
-
-    # Find continuous regions (>= 2 positions) of high cosine similarity (> mean+1 std)
+    # Find continuous regions (>= 2 positions) of relatively high cosine similarity
     regions = {}
     num_regions = 0
-    curr_region = []
-    in_region = False
-    len_region = 0
-    sim_region = 0
-    for i, sim in enumerate(avg_cos):
 
-        # If cosine similarity is high, add to current region
-        if sim >= np.mean(avg_cos) + np.std(avg_cos):
-            curr_region.append(i)
-            in_region = True
-            len_region += 1
-            sim_region += sim
+    # Want at least 3 regions identified per family, may have to lower threshold
+    mean = np.mean(avg_cos)
+    std = np.std(avg_cos)
+    count = 0
+    while num_regions < 3 and count < 10:
+        curr_region = []
+        in_region = False
+        len_region, sim_region = 0, 0
+        for i, sim in enumerate(avg_cos):
 
-        # If cosine similarity is low, end current region
-        else:
-            if in_region and len_region >= 2:
-                num_regions += 1
-                regions[num_regions] = [curr_region, sim_region/len_region]
-            curr_region = []
-            in_region = False
-            len_region, sim_region = 0, 0
+            # If cosine similarity is high, add to current region
+            if sim >= (mean + std):
+                curr_region.append(i)
+                in_region = True
+                len_region += 1
+                sim_region += sim
 
-    return regions
+            # If cosine similarity is low, end current region
+            else:
+                if in_region and len_region >= 2:
+                    num_regions += 1
+                    regions[num_regions] = [curr_region, len(avg_cos), sim_region/len_region]
+                curr_region = []
+                in_region = False
+                len_region, sim_region = 0, 0
+                num_regions = len(regions)
 
+            # Filter regions
+            regions = filter_regions(regions)
 
-def filter_regions(regions: dict) -> dict:
-    """=============================================================================================
-    This function accepts a dictionary of regions and returns a filtered dictionary of regions.
+        # Lower threshold and find more regions if not enough found
+        count += 1
+        std *= 0.50
 
-    :param regions: dict where region is key with list of positions and average cosine similarity
-    :return dict: region is key with list of positions and average cosine similarity as value
-    ============================================================================================="""
-
-    # Sort by average cosine similarity, highest to lowest and select top 3
-    regions = dict(sorted(regions.items(), key=lambda item: item[1][1], reverse=True))
-    regions = dict(list(regions.items())[:3])
-
+    print(regions)
+    print()
     return regions
 
 
@@ -207,6 +242,9 @@ def main():
 
     for family in os.listdir('Data/prott5_embed'):
 
+        if family != 'Keratin':
+            continue
+
         # Get sequences and their consensus positions
         sequences = get_seqs(family)
         positions = cons_pos(sequences)
@@ -218,10 +256,13 @@ def main():
         # Find regions of high cosine similarity to consensus embedding
         avg_cos = get_cos_sim(family, cons_embed)  #pylint: disable=W0612
         regions = determine_regions(avg_cos)
-        filt_regions = filter_regions(regions)
+
+        # Sort by average cosine similarity, highest to lowest and take top 3 regions
+        regions = dict(sorted(regions.items(), key=lambda item: item[1][2], reverse=True))
+        regions = dict(list(regions.items())[:5])
 
         # Get anchor residues (embedding) for each sequence
-        get_anchors(family, filt_regions)
+        get_anchors(family, regions)
 
 
 if __name__ == '__main__':
