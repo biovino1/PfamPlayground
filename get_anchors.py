@@ -5,6 +5,7 @@ the consensus embedding.
 Ben Iovino  05/19/23   PfamPlayground
 ================================================================================================"""
 
+import argparse
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -117,46 +118,59 @@ def filter_regions(regions: dict) -> dict:
     :return dict: region is key with list of positions and average cosine similarity as value
     ============================================================================================="""
 
-    # Remove regions that are close to beginning or end of sequence
-    del_reg = []
-    #for reg, pos in regions.items():
-        #if pos[0][0] < 3 or pos[0][-1] > (pos[1] - 3):
-            #del_reg.append(reg)
-
-    # Sort by average cosine similarity, highest to lowest, so we remove lower ones first
+    # Sort by average cosine similarity, highest to lowest
     regions = dict(sorted(regions.items(), key=lambda item: item[1][2], reverse=True))
-    mids = {}
-    for reg, pos in regions.items():
-        mids[reg] = pos[0][ceil((len(pos[0]) - 1)/2)]  # Find middle position for each region
+    regions = dict(enumerate(regions.values()))
 
-    # Go through middle positions and remove ones that are < 3 positions away
-    for reg1, pos1 in mids.items():
-        for reg2, pos2 in mids.items():
-            if reg1 != reg2 and abs(pos1 - pos2) < 4 and reg2 not in del_reg and reg1 not in del_reg:
-                del_reg.append(reg2)  # Second region is less similar than first, remove it
+    # Get middle positions of each region
+    mids = []
+    for reg in regions.values():
+        mids.append(reg[0][ceil((len(reg[0]) - 1)/2)])
+
+    print(f'BEFORE ANYTHING: {mids}')
+    print()
+
+    # Filter out regions that are too close to other regions by comparing middle positions
+    pointer = 0
+    while pointer != len(mids):
+        print(f'NEW MIDS {mids}')
+        del_list = []
+        print(f'LIST BEING ITERATED ON {mids[pointer:]}')
+        print()
+        print(f'POINTER {pointer}')
+        print()
+        for i, num in enumerate(mids[pointer+1:]):
+            if abs(mids[pointer] - num) <= 5:
+                del_list.append(i + pointer + 1)
+        pointer += 1
+        print(f'INDICES TO DELETE {del_list}')
+        print()
+        del_count = 0
+        for index in del_list:
+            print(f'CURRENT MIDS {mids}')
+            print(f'NUMBER TO DELETE {mids[index-del_count]}')
+            print()
+            del mids[index-del_count]
+            del_count += 1
+
+        print(f'NEW MIDS: {mids}')
+        print('\n\n\n')
 
     print(mids)
-    if del_reg:
-        print(del_reg)
-    for reg in del_reg:
-        print(regions[reg])
-
-    # Can't delete while iterating through dictionary
-    del_reg = list(set(del_reg))
-    for reg in del_reg:
-        del regions[reg]
-
+    print()
+    print()
     return regions
 
 
-def determine_regions(avg_cos: list) -> dict:
+def determine_regions(avg_cos: list, num_anchors: int) -> dict:
     """=============================================================================================
     This function accepts list of cosine similarities and returns a dictionary of regions, each one
     being consecutive positions with relatively high cosine similarity. A region is defined as
     having at least 2 positions with cosine similarity greater than the mean plus one standard
-    deviation.
+    deviation, or lower if not enough regions are found.
 
     :param avg_cos: list of average cosine similarities for each position
+    :param num_anchors: number of anchor residues to find
     :return dict: region is key with list of positions and average cosine similarity as value
     ============================================================================================="""
 
@@ -164,15 +178,15 @@ def determine_regions(avg_cos: list) -> dict:
     regions = {}
     num_regions = 0
 
-    # Want at least 3 regions identified per family, may have to lower threshold
+    # Want at least num_anchors identified per family, may have to lower threshold to get them
     mean = np.mean(avg_cos)
     std = np.std(avg_cos)
-    count = 0
-    while num_regions < 3 and count < 10:
+    count = 0  # Stop after 10 iterations
+    while num_regions < num_anchors and count < 10:
         curr_region = []
         in_region = False
         len_region, sim_region = 0, 0
-        for i, sim in enumerate(avg_cos):
+        for i, sim in enumerate(avg_cos):  # For each position in the embedding
 
             # If cosine similarity is high, add to current region
             if sim >= (mean + std):
@@ -191,15 +205,13 @@ def determine_regions(avg_cos: list) -> dict:
                 len_region, sim_region = 0, 0
                 num_regions = len(regions)
 
-            # Filter regions
-            regions = filter_regions(regions)
+        # Filter out regions that are too close to other regions
+        regions = filter_regions(regions)
 
         # Lower threshold and find more regions if not enough found
         count += 1
         std *= 0.50
 
-    print(regions)
-    print()
     return regions
 
 
@@ -240,6 +252,10 @@ def main():
     based on cosine similarity to the average embedding.
     ============================================================================================="""
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-a', type=int, help='Number of anchor residues to find', default=3)
+    args = parser.parse_args()
+
     for family in os.listdir('Data/prott5_embed'):
 
         if family != 'Keratin':
@@ -255,11 +271,11 @@ def main():
 
         # Find regions of high cosine similarity to consensus embedding
         avg_cos = get_cos_sim(family, cons_embed)  #pylint: disable=W0612
-        regions = determine_regions(avg_cos)
+        regions = determine_regions(avg_cos, args.a)
 
-        # Sort by average cosine similarity, highest to lowest and take top 3 regions
+        # Sort by average cosine similarity, highest to lowest and take top num regions
         regions = dict(sorted(regions.items(), key=lambda item: item[1][2], reverse=True))
-        regions = dict(list(regions.items())[:5])
+        regions = dict(list(regions.items())[:args.a])
 
         # Get anchor residues (embedding) for each sequence
         get_anchors(family, regions)
