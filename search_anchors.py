@@ -55,7 +55,7 @@ def query_search(sequence, qfamily, query: np.ndarray, anchors: list) -> str:
     # Print if query family is not result family
     if qfamily != result:
         if qfamily in sims:
-            print(sequence, qfamily, result, sims[qfamily], sims[result])
+            print(f'query: {qfamily}/{sequence}   hit: {result}   sim to real: {round(sims[qfamily], 4)}   sim to result: {round(sims[result], 4)}')
 
     # Return key with highest average similarity
     return result, difference
@@ -83,7 +83,7 @@ def main():
                 false += 1
             runs += 1
 
-    print(correct, false, tdiff/runs)
+    print(f'correct: {correct}   incorrect: {false}   highsim-lowsim: {round(tdiff/runs, 4)}')
 
 
 if __name__ == '__main__':
