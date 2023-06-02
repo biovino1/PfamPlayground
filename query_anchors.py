@@ -58,27 +58,29 @@ def query_search(query: np.ndarray, anchors: str, results: int) -> str:
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-q', type=str, help='Query sequence', default='/home/ben/Code/PfamPlayground/Data/families_nogaps/DUF1818/B1X079_CROS5.fa')
-    parser.add_argument('-e', type=str, help='Embedding of query sequence', default='/home/ben/Code/PfamPlayground/Data/prott5_embed/DUF1818/B1X079_CROS5.txt')
+    parser.add_argument('-q', type=str, help='Query sequence') #default='/home/ben/Code/PfamPlayground/Data/families_nogaps/DUF1818/B1X079_CROS5.fa')
+    parser.add_argument('-e', type=str, help='Embedding of query sequence') #default='/home/ben/Code/PfamPlayground/Data/prott5_embed/DUF1818/B1X079_CROS5.txt')
     parser.add_argument('-r', type=int, help='Number of results to return', default=5)
     args = parser.parse_args()
-
-    # Load tokenizer and encoder
-    if os.path.exists('Data/t5_tok.pt'):
-        tokenizer = torch.load('Data/t5_tok.pt')
-    else:
-        tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_uniref50", do_lower_case=False)
-        torch.save(tokenizer, 'Data/t5_tok.pt')
-    if os.path.exists('Data/prot_t5_xl.pt'):
-        model = torch.load('Data/prot_t5_xl.pt')
-    else:
-        model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
-        torch.save(model, 'Data/prot_t5_xl.pt')
 
     # Load query embedding or embed query sequence
     if args.e:
         query = np.loadtxt(args.e)  # pylint: disable=W0612
     else:
+
+        # Load tokenizer and encoder
+        if os.path.exists('Data/t5_tok.pt'):
+            tokenizer = torch.load('Data/t5_tok.pt')
+        else:
+            tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_uniref50", do_lower_case=False)
+            torch.save(tokenizer, 'Data/t5_tok.pt')
+        if os.path.exists('Data/prot_t5_xl.pt'):
+            model = torch.load('Data/prot_t5_xl.pt')
+        else:
+            model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
+            torch.save(model, 'Data/prot_t5_xl.pt')
+
+        # Read fasta file and embed sequence
         with open(args.q, 'r', encoding='utf8') as fa_file:
             seq = ''.join([line.strip('\n') for line in fa_file.readlines()[1:]])
         query = prot_t5xl_embed(seq, tokenizer, model, 'cpu')
@@ -87,6 +89,8 @@ def main():
     results = query_search(query, 'Data/anchors', args.r)
     for fam, sim in results.items():
         print(f'{fam}   {round(sim, 4)}')
+    print()
+
 
 if __name__ == '__main__':
     main()

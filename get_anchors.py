@@ -143,14 +143,14 @@ def filter_regions(regions: dict, filt_length: int) -> dict:
 
         # print(mid_regs)
         # print(f'NEW MIDS {mids}')
-
-        del_list = []
-
+        # print()
         # print(f'LIST BEING ITERATED ON {mids[pointer:]}')
         # print()
         # print(f'POINTER {pointer}')
         # print()
 
+        # Create list of indices to delete
+        del_list = []
         for i, num in enumerate(mids[pointer:]):
             if i == 0:
                 continue
@@ -161,6 +161,8 @@ def filter_regions(regions: dict, filt_length: int) -> dict:
         # print(f'INDICES TO DELETE {del_list}')
         # print()
 
+        # Delete indices from list of middle positions
+        # Use list of regions corresponding to mids to delete regions from regions dict
         del_count = 0
         for index in del_list:
 
@@ -168,7 +170,6 @@ def filter_regions(regions: dict, filt_length: int) -> dict:
             # print(f'NUMBER TO DELETE {mids[index-del_count]}')
             # print()
 
-            # print(regions)
             del mids[index-del_count]
             del regions[mid_regs[index]]
             del_count += 1
@@ -205,24 +206,23 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
     while num_regions < num_anchors and count < 10:
         curr_region = []
         in_region = False
-        len_region, sim_region = 0, 0
+        sim_region = 0
         for i, sim in enumerate(avg_cos):  # For each position in the embedding
 
             # If cosine similarity is high, add to current region
             if sim >= (mean + std):
                 curr_region.append(i)
                 in_region = True
-                len_region += 1
                 sim_region += sim
 
             # If cosine similarity is low, end current region
             else:
-                if in_region and len_region >= 2:
+                if in_region and len(curr_region) >= 2:
                     num_regions += 1
-                    regions[num_regions] = [curr_region, len(avg_cos), sim_region/len_region]
+                    regions[num_regions] = [curr_region, len(avg_cos), sim_region/len(curr_region)]
                 curr_region = []
                 in_region = False
-                len_region, sim_region = 0, 0
+                sim_region = 0
                 num_regions = len(regions)
 
         # Filter out regions that are too close to other regions
@@ -274,7 +274,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', type=int, help='Number of anchor residues to find', default=5)
-    parser.add_argument('-f', type=int, help='Closeness of regions to filter out', default=3)
+    parser.add_argument('-f', type=int, help='Closeness of regions to filter out', default=5)
     args = parser.parse_args()
 
     for family in os.listdir('Data/prott5_embed'):
