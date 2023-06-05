@@ -20,7 +20,7 @@ def write_seq(seq_id: str, fam: str, seq: str):
 
     # Split seq_id for file name
     sid = seq_id.split('/')[0]
-    filename = id.replace('>','')
+    filename = sid.replace('>','')
     region = seq_id.split('/')[1]
 
     # Add newline characters to seq
@@ -29,8 +29,7 @@ def write_seq(seq_id: str, fam: str, seq: str):
 
     # Write to file
     with open(f'Data/full_seqs/{fam}/{filename}.fa', 'w', encoding='utf8') as file:
-        file.write(f'>{sid}\t{region}\n{seq}')
-
+        file.write(f'{sid}\t{region}\n{seq}')
 
 
 def parse_id(line: str) -> str:
