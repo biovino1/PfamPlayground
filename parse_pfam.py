@@ -114,8 +114,10 @@ def main():
         pfam = 'Data/Pfam-A.seed'
     else:
         print('Pfam-A.seed not found. Downloading from Pfam...')
-        os.system('wget https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.seed.gz')
-        os.system('gunzip Pfam-A.seed.gz')
+        if not os.path.exists('Data'):
+            os.mkdir('Data')
+        os.system('wget -P Data https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.seed.gz')
+        os.system('gunzip Data/Pfam-A.seed.gz')
         pfam = 'Data/Pfam-A.seed'
 
     # Create directories for families

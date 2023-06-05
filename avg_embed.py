@@ -52,11 +52,10 @@ def cons_pos(sequences: dict) -> dict:
     return positions
 
 
-def get_embed(family: str, sequences: dict) -> dict:
+def get_embed(direc: str, sequences: dict) -> dict:
     """=============================================================================================
-    This function accepts a family name, a dictionary of sequences in that family, and a dictionary
-    of positions that are included in the consensus sequence. It returns a dictionary of embeddings
-    corresponding to the consensus positions.
+    This function accepts a directory of fasta seqs and a dictionary of sequences located in that
+    directory. It returns a dictionary of embeddings corresponding to the consensus positions.
 
     :param family: name of Pfam family
     :param sequences: dict where seq id is key with sequence as value
@@ -66,8 +65,8 @@ def get_embed(family: str, sequences: dict) -> dict:
 
     # Load embeddings from file
     embeddings = {}
-    for file in os.listdir(f'Data/prott5_embed/{family}'):
-        with open(f'Data/prott5_embed/{family}/{file}', 'r', encoding='utf8') as file:
+    for file in os.listdir(direc):
+        with open(f'{direc}/{file}', 'r', encoding='utf8') as file:
             seqname = file.name.split('/')[-1].split('.')[0]  # To match with sequences dict keys
             embeddings[seqname] = np.loadtxt(file)
 
@@ -134,10 +133,11 @@ def main():
     average_embed() to average the embeddings and save them to file.
     ============================================================================================="""
 
-    for family in os.listdir('Data/prott5_embed'):
+    direc = 'Data/prott5_embed'
+    for family in os.listdir(direc):
 
         # Ignore files that already have an average embedding
-        if 'avg_embed.txt' in os.listdir(f'Data/prott5_embed/{family}'):
+        if 'avg_embed.txt' in os.listdir(f'{direc}/{family}'):
             continue
 
         # Get sequences and their consensus positions
@@ -145,7 +145,8 @@ def main():
         positions = cons_pos(sequences)
 
         # Get embeddings for each sequence in family and average them
-        embeddings = get_embed(family, sequences)
+        embed_direc = f'{direc}/{family}'
+        embeddings = get_embed(embed_direc, sequences)
         average_embed(family, positions, embeddings)
 
 

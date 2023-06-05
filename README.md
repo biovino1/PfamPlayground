@@ -19,7 +19,12 @@ each sequence should be included in the average.
 align_pfam.py uses PEbA to align sequences and reports the alignment score for each pair of sequences.
 read_scores.py reads the alignment scores and plots their distribution.
 
-anchor_pos.py compares the embeddings for each sequence in a family to the average embedding for that family
+get_anchors.py compares the embeddings for each sequence in a family to the average embedding for that family
 by calculating the cosine similarity between each embedding and the average embedding. Regions of high
 similarity are determined by finding consecutive amino acids that have a cosine similarity above a threshold.
 The highest scoring regions are used as anchors for the sequence, reducing the size of the sequence.
+
+query_anchors.py allows the user to query a sequence against all of the anchors to determine what family
+the query sequence is most similar to. A fasta sequence or pre-embedded sequence can be used as input.
+
+search_anchors.py is a script used to test many queries at once against the anchors.
