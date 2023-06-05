@@ -277,7 +277,8 @@ def main():
     parser.add_argument('-f', type=int, help='Closeness of regions to filter out', default=5)
     args = parser.parse_args()
 
-    for family in os.listdir('Data/prott5_embed'):
+    direc = 'Data/prott5_embed'
+    for family in os.listdir(direc):
 
         # Get sequences and their consensus positions
         sequences = get_seqs(family)
@@ -288,7 +289,8 @@ def main():
         cons_embed = embed_pos(positions, embeddings)
 
         # Find regions of high cosine similarity to consensus embedding
-        avg_cos = get_cos_sim(family, cons_embed)  #pylint: disable=W0612
+        embed_direc = f'{direc}/{family}'
+        avg_cos = get_cos_sim(embed_direc, cons_embed)  #pylint: disable=W0612
         regions = determine_regions(avg_cos, args.a, args.f)
 
         # Sort by average cosine similarity, highest to lowest and take top num regions

@@ -5,9 +5,12 @@ if the resulting alignment scores are able to be used for homology detection.
 # WORKFLOW
 **************************************************************************************************************
 
-parse_pfam.py downloads the Pfam-A.seed database file from Pfam if it is not found in the directory. It then
+parse_seed.py downloads the Pfam-A.seed database file from Pfam if it is not found in the directory. It then
 parses the file and extracts the accession number and sequence for each protein. It also extracts the consensus
 sequence for each family for later use. Each sequence is read twice, once with gaps and once without gaps.
+
+parse_fasta.py parses the Pfam-A.fasta database file. It extracts the sequence id and family name for each
+sequence and saves the fasta sequence in the corresponding family directory.
 
 embed_pfam.py uses the ProtT5-XL-U50 encoder to embed each sequence. It locally downloads the tokenizer and
 encoder required if they are not found in the directory. Each embedding is saved as a numpy array in a .txt file.
