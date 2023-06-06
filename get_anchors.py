@@ -2,7 +2,7 @@
 This script takes embeddings from a directory and determines positions that are highly similar to
 the consensus embedding.
 
-Ben Iovino  05/19/23   PfamPlayground
+Ben Iovino  05/19/23   SearchEmb
 ================================================================================================"""
 
 import argparse
@@ -273,24 +273,27 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-a', type=int, help='Number of anchor residues to find', default=5)
-    parser.add_argument('-f', type=int, help='Closeness of regions to filter out', default=5)
+    parser.add_argument('-a', type=int, help='Number of anchor residues to find', default=3)
+    parser.add_argument('-f', type=int, help='Closeness of regions to filter out', default=3)
     args = parser.parse_args()
 
     direc = 'Data/prott5_embed'
     for family in os.listdir(direc):
+
+        # Check if anchors already exist
+        if os.path.exists(f'Data/anchors/{family}/anchor_embed.txt'):
+            continue
 
         # Get sequences and their consensus positions
         sequences = get_seqs(family)
         positions = cons_pos(sequences)
 
         # Get embeddings for each sequence in family and take only consensus positions
-        embeddings = get_embed(family, sequences)
+        embeddings = get_embed(f'{direc}/{family}', sequences)
         cons_embed = embed_pos(positions, embeddings)
 
         # Find regions of high cosine similarity to consensus embedding
-        embed_direc = f'{direc}/{family}'
-        avg_cos = get_cos_sim(embed_direc, cons_embed)  #pylint: disable=W0612
+        avg_cos = get_cos_sim(family, cons_embed)  #pylint: disable=W0612
         regions = determine_regions(avg_cos, args.a, args.f)
 
         # Sort by average cosine similarity, highest to lowest and take top num regions

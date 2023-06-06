@@ -2,7 +2,7 @@
 This script parses each sequence in the Pfam-A.full database and creates a fasta file for each
 sequence in the family. The fasta files are stored in a directory named after the family.
 
-Ben Iovino  06/05/23   PfamPlayground
+Ben Iovino  06/05/23   SearchEmb
 ================================================================================================"""
 
 import os
@@ -92,7 +92,8 @@ def main():
         print('Pfam-A.seed not found. Downloading from Pfam...')
         if not os.path.exists('Data'):
             os.mkdir('Data')
-        os.system('wget -P Data https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.fasta.gz')
+        os.system('wget -P Data ' \
+            'https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.fasta.gz')
         os.system('gunzip Data/Pfam-A.fasta.gz')
         pfam = 'Data/Pfam-A.fasta'
 

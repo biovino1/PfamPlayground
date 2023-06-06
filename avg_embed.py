@@ -2,7 +2,7 @@
 This script averages all embeddings for each Pfam family and saves the average embedding as a numpy
 array in a new directory.
 
-Ben Iovino  05/12/23   PfamPlayground
+Ben Iovino  05/12/23   SearchEmb
 ================================================================================================"""
 
 import os
@@ -69,10 +69,6 @@ def get_embed(direc: str, sequences: dict) -> dict:
         with open(f'{direc}/{file}', 'r', encoding='utf8') as file:
             seqname = file.name.split('/')[-1].split('.')[0]  # To match with sequences dict keys
             embeddings[seqname] = np.loadtxt(file)
-
-    # Remove avg_embed if it exists from keys
-    if 'avg_embed' in embeddings.keys():
-        del embeddings['avg_embed']
 
     # Pad embeddings to match length of consensus sequence
     del embeddings['consensus']  # Remove consensus from embeddings

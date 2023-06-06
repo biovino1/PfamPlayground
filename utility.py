@@ -1,7 +1,7 @@
 """================================================================================================
 This script contains utility functions to be imported into other scripts.
 
-Ben Iovino  06/01/23   PfamPlayground
+Ben Iovino  06/01/23   SearchEmb
 ================================================================================================"""
 
 import re

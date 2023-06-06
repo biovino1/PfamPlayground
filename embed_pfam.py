@@ -2,7 +2,7 @@
 This embeds all of the sequences from Pfam using RostLab's ProtT5_XL_UniRef50 model. The embeddings
 are saved as numpy arrays.
 
-Ben Iovino  05/08/23   PfamPlayground
+Ben Iovino  05/08/23   SearchEmb
 ================================================================================================"""
 
 import logging

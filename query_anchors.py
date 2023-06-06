@@ -2,7 +2,7 @@
 This script takes a query sequence and a group of anchor sequences and outputs the most similar
 anchor sequences along with their similarity scores.
 
-Ben Iovino  06/01/23   PfamPlayground
+Ben Iovino  06/01/23   SearchEmb
 ================================================================================================"""
 
 import argparse
@@ -34,6 +34,11 @@ def query_search(query: np.ndarray, anchors: str, results: int) -> str:
         anchors = f'Data/anchors/{family}/anchor_embed.txt'
         ancs_emb = np.loadtxt(anchors)
 
+        # I think np.loadtxt loads a single line as a 1D array, so convert to 2D or else
+        # max_sim = max(cos_sim) will throw an error
+        if len(ancs_emb) == 1024:
+            ancs_emb = [ancs_emb]
+
         # Add family to sims dict
         if family not in sims:
             sims[family] = []
@@ -62,8 +67,8 @@ def query_search(query: np.ndarray, anchors: str, results: int) -> str:
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-q', type=str, help='Query sequence')# default='/home/ben/Code/PfamPlayground/Data/families_nogaps/DUF1818/B1X079_CROS5.fa')
-    parser.add_argument('-e', type=str, help='Embedding of query sequence')# default='/home/ben/Code/PfamPlayground/Data/prott5_embed/DUF1818/B1X079_CROS5.txt')
+    parser.add_argument('-q', type=str, help='Query sequence')
+    parser.add_argument('-e', type=str, help='Embedding of query sequence')
     parser.add_argument('-r', type=int, help='Number of results to return', default=5)
     args = parser.parse_args()
 
