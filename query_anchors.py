@@ -13,8 +13,8 @@ import torch
 from transformers import T5EncoderModel, T5Tokenizer
 from utility import prot_t5xl_embed
 
-logging.basicConfig(filename='Data/query_anchors.log',
-                     level=logging.INFO, format='%(asctime)s %(message)s')
+#logging.basicConfig(filename='Data/query_anchors.log',
+                     #level=logging.INFO, format='%(asctime)s %(message)s')
 
 
 def query_search(query: np.ndarray, anchors: str, results: int) -> str:
@@ -94,12 +94,14 @@ def main():
             seq = ''.join([line.strip('\n') for line in fa_file.readlines()[1:]])
         query = prot_t5xl_embed(seq, tokenizer, model, 'cpu')
 
+    '''
     # Search query against every set of anchors
     logging.info('Searching %s against anchors...', args.e)
     results = query_search(query, 'Data/anchors', args.r)
     for fam, sim in results.items():
         logging.info('%s\t%s', fam, round(sim, 4))
     logging.info('\n')
+    '''
 
 
 if __name__ == '__main__':

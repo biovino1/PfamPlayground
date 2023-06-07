@@ -5,33 +5,36 @@ similar anchor sequence.
 Ben Iovino  05/24/23   SearchEmb
 ================================================================================================"""
 
+import datetime
+import logging
 import os
 import pickle
-import torch
 from random import sample
+import torch
 from transformers import T5EncoderModel, T5Tokenizer
 from utility import prot_t5xl_embed
 from query_anchors import query_search
 
+logging.basicConfig(filename='Data/search_results.log',
+                     level=logging.INFO, format='%(message)s')
 
-def embed_query(direc, fam, query, tokenizer, model):
+
+def embed_query(sequence, tokenizer, model, device):
     """=============================================================================================
     This function embeds a query sequence and saves it to file. query_anchors.py can also perform
     this function when a fasta file is passed through, but this is more efficient when running
     multiple queries so the models only have to load once.
 
-    :param direc: directory of fasta sequences
-    :param fam: family of query sequence
-    :param query: query sequence
+    :param sequence: path to fasta file containing query sequence
     :param tokenizer: T5 tokenizer
     :param model: ProtT5-XL model
+    :param device: cpu or gpu
     ============================================================================================="""
 
     # Embed query in this script to save time from loading model every time
-    with open(f'{direc}/{fam}/{query}', 'r', encoding='utf8') as fa_file:
+    with open(sequence, 'r', encoding='utf8') as fa_file:
         seq = ''.join([line.strip('\n') for line in fa_file.readlines()[1:]])
-    query = query.replace('.fa', '')
-    embed = prot_t5xl_embed(seq, tokenizer, model, 'cpu')
+    embed = prot_t5xl_embed(seq, tokenizer, model, device)
 
     return embed
 
@@ -44,20 +47,18 @@ def search_results(query: str, results: dict):
     :param results: dictionary of results from searching query against anchors
     ============================================================================================="""
 
-    # Save results to csv file
-    with open('Data/search_results.csv', 'a', encoding='utf8') as csv:
-        csv.write(f'{query}\n')
-        for fam, sim in results.items():
-            csv.write(f'{fam},{sim}\n')
-        csv.write('\n')
+    # Log time and similarity for each result
+    logging.info('%s\n%s', datetime.datetime.now(), query)
+    for fam, sim in results.items():
+        logging.info('%s,%s', fam, sim)
 
     # See if query is in top results
     query_fam = query.split('/')[0]
     match, top, clan = 0, 0, 0
-    if query_fam == list(results.keys())[0]:
+    if query_fam == list(results.keys())[0]:  # Top result
         match += 1
         return match, top, clan
-    if query_fam in results:
+    if query_fam in results:  # Top n results
         top += 1
         return match, top, clan
 
@@ -73,6 +74,10 @@ def search_results(query: str, results: dict):
 
 
 def main():
+    """=============================================================================================
+    Main function loads tokenizer and model, randomly samples a query sequence from a family, embeds
+    the query, searches the query against anchors, and logs the results
+    ============================================================================================="""
 
     if os.path.exists('Data/t5_tok.pt'):
         tokenizer = torch.load('Data/t5_tok.pt')
@@ -100,7 +105,8 @@ def main():
         # Randomly sample one query from family
         queries = os.listdir(f'{direc}/{fam}')
         query = sample(queries, 1)[0]
-        embed = embed_query(direc, fam, query, tokenizer, model)
+        seq_file = f'{direc}/{fam}/{query}'
+        embed = embed_query(seq_file, tokenizer, model, device)
 
         # Search anchors and analyze results
         results = query_search(embed, 'Data/anchors', 10)
@@ -109,7 +115,7 @@ def main():
         top += t
         clan += c
         total += 1
-        print(total, match, top, clan)
+        logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)
 
 
 if __name__ == '__main__':
