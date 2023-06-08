@@ -198,12 +198,15 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
     # Find continuous regions (>= 2 positions) of relatively high cosine similarity
     regions = {}
     num_regions = 0
+    reg_length = 2
 
     # Want at least num_anchors identified per family, may have to lower threshold to get them
     mean = np.mean(avg_cos)
     std = np.std(avg_cos)
     count = 0  # Stop after 10 iterations
     while num_regions < num_anchors and count < 10:
+
+        # Going over sequence again, reset region variables
         curr_region = []
         in_region = False
         sim_region = 0
@@ -217,7 +220,7 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
 
             # If cosine similarity is low, end current region
             else:
-                if in_region and len(curr_region) >= 2:
+                if in_region and len(curr_region) >= reg_length:
                     num_regions += 1
                     regions[num_regions] = [curr_region, len(avg_cos), sim_region/len(curr_region)]
                 curr_region = []
@@ -225,12 +228,22 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
                 sim_region = 0
                 num_regions = len(regions)
 
-        # Filter out regions that are too close to other regions
-        regions = filter_regions(regions, filt_length)
+        # Filter regions up to the third loop, if still not enough regions then lower
+        # length of region to 1 and stop filtering for close ones
+        if count < 3:
+            reg_length = 2
+            regions = filter_regions(regions, filt_length)
+        else:
+            regions = filter_regions(regions, 1)  # Ensure no repeat regions
+            reg_length = 1
 
         # Lower threshold and find more regions if not enough found
         count += 1
         std *= 0.50
+
+    # If no regions are found, simply return the highest cosine similarity
+    if not regions:
+        regions[0] = [[np.argmax(avg_cos)], len(avg_cos), np.max(avg_cos)]
 
     return regions
 
