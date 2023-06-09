@@ -53,10 +53,15 @@ def query_search(query: np.ndarray, anchors: str, results: int) -> str:
             max_sim = max(cos_sim)  # Find most similar embedding of query to anchor
             sims[family].append(max_sim)
 
+            # Compare similarity to first anchor to average similarities of rest of results
+            if len(sims[family]) == 1 and len(sims) > 100:
+                if max_sim < np.mean(list(sims.values())[100]):
+                    break
+
         # Average similarities across all query embeddings to anchor embeddings
         sims[family] = np.mean(sims[family])
 
-    # Sort sims dict and return top 5 results
+    # Sort sims dict and return top n results
     top_sims = {}
     for key in sorted(sims, key=sims.get, reverse=True)[:results]:
         top_sims[key] = sims[key]

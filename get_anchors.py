@@ -128,9 +128,6 @@ def filter_regions(regions: dict, filt_length: int) -> dict:
     for reg in regions.values():
         mids.append(reg[0][ceil((len(reg[0]) - 1)/2)])
 
-    # print(f'BEFORE ANYTHING: {mids}')
-    # print()
-
     # Filter out regions that are too close to other regions by comparing middle positions
     pointer = 0
     while pointer != len(mids):
@@ -141,14 +138,6 @@ def filter_regions(regions: dict, filt_length: int) -> dict:
         # Rename region keys to be consecutive
         regions = dict(enumerate(regions.values()))
 
-        # print(mid_regs)
-        # print(f'NEW MIDS {mids}')
-        # print()
-        # print(f'LIST BEING ITERATED ON {mids[pointer:]}')
-        # print()
-        # print(f'POINTER {pointer}')
-        # print()
-
         # Create list of indices to delete
         del_list = []
         for i, num in enumerate(mids[pointer:]):
@@ -158,26 +147,15 @@ def filter_regions(regions: dict, filt_length: int) -> dict:
                 del_list.append(i + pointer)
         pointer += 1
 
-        # print(f'INDICES TO DELETE {del_list}')
-        # print()
-
         # Delete indices from list of middle positions
         # Use list of regions corresponding to mids to delete regions from regions dict
         del_count = 0
         for index in del_list:
 
-            # print(f'CURRENT MIDS {mids}')
-            # print(f'NUMBER TO DELETE {mids[index-del_count]}')
-            # print()
-
+            # Delete middle position and region
             del mids[index-del_count]
             del regions[mid_regs[index]]
             del_count += 1
-
-        # print('\n\n\n')
-    # print(mids)
-    # print()
-    # print()
 
     return regions
 
@@ -239,7 +217,7 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
 
         # Lower threshold and find more regions if not enough found
         count += 1
-        std *= 0.50
+        std *= 0.5
 
     # If no regions are found, simply return the highest cosine similarity
     if not regions:
