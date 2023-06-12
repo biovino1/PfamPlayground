@@ -123,6 +123,16 @@ def filter_regions(regions: dict, filt_length: int) -> dict:
     regions = dict(sorted(regions.items(), key=lambda item: item[1][2], reverse=True))
     regions = dict(enumerate(regions.values()))
 
+    # Delete regions at beginning and end of sequence
+    del_list = []
+    for i, reg in enumerate(regions.values()):
+        if reg[0][0] < 3 or reg[0][-1] > (reg[1] - 3):
+            del_list.append(i)
+    for index in del_list:
+        del regions[index]
+
+    # Delete indices from list of middle positions
+
     # Get middle positions of each region
     mids = []
     for reg in regions.values():
@@ -138,13 +148,14 @@ def filter_regions(regions: dict, filt_length: int) -> dict:
         # Rename region keys to be consecutive
         regions = dict(enumerate(regions.values()))
 
-        # Create list of indices to delete
+        # Comparing middle positions, starting with first one to the rest of the list
+        # If any position is within filt_length of the current middle add to delete list
         del_list = []
         for i, num in enumerate(mids[pointer:]):
-            if i == 0:
+            if i == 0:  # Skip first one so we can compare to the rest
                 continue
             if abs(mids[pointer] - num) < filt_length:
-                del_list.append(i + pointer)
+                del_list.append(i + pointer)  # Using separate list to avoid index errors
         pointer += 1
 
         # Delete indices from list of middle positions
@@ -185,9 +196,7 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
     while num_regions < num_anchors and count < 10:
 
         # Going over sequence again, reset region variables
-        curr_region = []
-        in_region = False
-        sim_region = 0
+        curr_region, in_region, sim_region = [], False, 0
         for i, sim in enumerate(avg_cos):  # For each position in the embedding
 
             # If cosine similarity is high, add to current region
@@ -201,15 +210,12 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
                 if in_region and len(curr_region) >= reg_length:
                     num_regions += 1
                     regions[num_regions] = [curr_region, len(avg_cos), sim_region/len(curr_region)]
-                curr_region = []
-                in_region = False
-                sim_region = 0
+                curr_region, in_region, sim_region = [], False, 0
                 num_regions = len(regions)
 
         # Filter regions up to the third loop, if still not enough regions then lower
         # length of region to 1 and stop filtering for close ones
         if count < 3:
-            reg_length = 2
             regions = filter_regions(regions, filt_length)
         else:
             regions = filter_regions(regions, 1)  # Ensure no repeat regions
@@ -270,7 +276,7 @@ def main():
 
     direc = 'Data/prott5_embed'
     for family in os.listdir(direc):
-
+        print(family)
         # Check if anchors already exist
         if os.path.exists(f'Data/anchors/{family}/anchor_embed.txt'):
             continue
@@ -293,6 +299,8 @@ def main():
 
         # Get anchor residues (embedding) for each sequence
         get_anchors(family, regions)
+        print(regions)
+        print()
 
 
 if __name__ == '__main__':
