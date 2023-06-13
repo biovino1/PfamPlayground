@@ -131,8 +131,6 @@ def filter_regions(regions: dict, filt_length: int) -> dict:
     for index in del_list:
         del regions[index]
 
-    # Delete indices from list of middle positions
-
     # Get middle positions of each region
     mids = []
     for reg in regions.values():
@@ -193,7 +191,7 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
     mean = np.mean(avg_cos)
     std = np.std(avg_cos)
     count = 0  # Stop after 10 iterations
-    while num_regions < num_anchors and count < 10:
+    while num_regions < num_anchors and count < 100:
 
         # Going over sequence again, reset region variables
         curr_region, in_region, sim_region = [], False, 0
@@ -211,7 +209,6 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
                     num_regions += 1
                     regions[num_regions] = [curr_region, len(avg_cos), sim_region/len(curr_region)]
                 curr_region, in_region, sim_region = [], False, 0
-                num_regions = len(regions)
 
         # Filter regions up to the third loop, if still not enough regions then lower
         # length of region to 1 and stop filtering for close ones
@@ -222,12 +219,9 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
             reg_length = 1
 
         # Lower threshold and find more regions if not enough found
+        num_regions = len(regions)
         count += 1
-        std *= 0.5
-
-    # If no regions are found, simply return the highest cosine similarity
-    if not regions:
-        regions[0] = [[np.argmax(avg_cos)], len(avg_cos), np.max(avg_cos)]
+        std *= 0.90
 
     return regions
 
