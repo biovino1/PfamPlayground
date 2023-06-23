@@ -6,15 +6,31 @@ Ben Iovino  06/01/23   SearchEmb
 ================================================================================================"""
 
 import argparse
-import logging
 import numpy as np
 import os
 import torch
 from transformers import T5EncoderModel, T5Tokenizer
 from utility import prot_t5xl_embed
 
-#logging.basicConfig(filename='Data/query_anchors.log',
-                     #level=logging.INFO, format='%(asctime)s %(message)s')
+
+def prefilter(anchor: np.ndarray, query: np.ndarray) -> bool:
+    """=============================================================================================
+    This function takes an anchor and query embedding and finds the similarity of the anchor to a
+    subset of embeddings in the query to determine if it is worth comparing the rest of the query
+
+    :param anchor: embedding of anchor sequence
+    :param query: list of embeddings of query sequence
+    :return bool: True if anchor is similar to one of the query embeddings, False otherwise
+    ============================================================================================="""
+
+    n = len(query) // 3
+    for embedding in query[::n]:  # Every nth embedding
+        sim = np.dot(anchor, embedding) / \
+            (np.linalg.norm(anchor) * np.linalg.norm(embedding))
+        if sim > 0.025:
+            return True
+
+    return False
 
 
 def query_search(query: np.ndarray, anchors: str, results: int) -> str:
@@ -46,20 +62,35 @@ def query_search(query: np.ndarray, anchors: str, results: int) -> str:
         # Compare every anchor embedding to query embedding
         max_sim = 0
         for anchor in ancs_emb:
-            cos_sim = []
-            for embedding in query:
-                cos_sim.append(np.dot(anchor, embedding) /
-                        (np.linalg.norm(anchor) * np.linalg.norm(embedding)))
-            max_sim = max(cos_sim)  # Find most similar embedding of query to anchor
-            sims[family].append(max_sim)
+            metric = []
 
-            # Compare similarity to first anchor to average similarities of rest of results
-            if len(sims[family]) == 1 and len(sims) > 100:
-                if max_sim < np.mean(list(sims.values())[100]):
-                    break
+            # If similarity is high enough, compare every embedding to anchor
+            if prefilter(anchor, query):
+                for embedding in query:
+
+                    # Cosine similarity between anchor and query embedding
+                    sim = np.dot(anchor, embedding) / \
+                        (np.linalg.norm(anchor) * np.linalg.norm(embedding))
+                    metric.append(sim)
+
+                    # Euclidean distance between anchor and query embedding
+                    #dist = (1/np.linalg.norm(anchor-embedding))
+                    #metric.append(dist)
+                    #all_sims.append(dist)
+
+                max_sim = max(metric)  # Find most similar embedding of query to anchor
+                sims[family].append(max_sim)
+
+                # Compare similarity to first anchor to average similarities of rest of results
+                if len(sims[family]) == 1 and len(sims) > 100:
+                    if max_sim < np.mean(list(sims.values())[100]):
+                        break  # If similarity is too low, stop comparing to rest of anchors
 
         # Average similarities across all query embeddings to anchor embeddings
-        sims[family] = np.mean(sims[family])
+        if len(sims[family]) == 0:
+            del sims[family]
+        else:
+            sims[family] = np.mean(sims[family])
 
     # Sort sims dict and return top n results
     top_sims = {}
@@ -99,14 +130,8 @@ def main():
             seq = ''.join([line.strip('\n') for line in fa_file.readlines()[1:]])
         query = prot_t5xl_embed(seq, tokenizer, model, 'cpu')
 
-    '''
-    # Search query against every set of anchors
-    logging.info('Searching %s against anchors...', args.e)
-    results = query_search(query, 'Data/anchors', args.r)
-    for fam, sim in results.items():
-        logging.info('%s\t%s', fam, round(sim, 4))
-    logging.info('\n')
-    '''
+    # Search query against anchors
+    results = query_search(query, 'Data/anchors', args.r)  #pylint: disable=W0612
 
 
 if __name__ == '__main__':

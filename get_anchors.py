@@ -6,11 +6,15 @@ Ben Iovino  05/19/23   SearchEmb
 ================================================================================================"""
 
 import argparse
+import logging
 import os
+from math import ceil
 import matplotlib.pyplot as plt
 import numpy as np
 from avg_embed import get_seqs, cons_pos, get_embed
-from math import ceil
+
+logging.basicConfig(filename='Data/get_anchors.log',
+                     level=logging.INFO, format='%(message)s')
 
 
 def embed_pos(positions: dict, embeddings: dict) -> list:
@@ -191,7 +195,7 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
     mean = np.mean(avg_cos)
     std = np.std(avg_cos)
     count = 0  # Stop after 10 iterations
-    while num_regions < num_anchors and count < 100:
+    while num_regions < num_anchors and count < 10:
 
         # Going over sequence again, reset region variables
         curr_region, in_region, sim_region = [], False, 0
@@ -221,7 +225,8 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
         # Lower threshold and find more regions if not enough found
         num_regions = len(regions)
         count += 1
-        std *= 0.90
+        std *= 0.50
+    logging.info('Regions: %s', regions)
 
     return regions
 
@@ -270,10 +275,11 @@ def main():
 
     direc = 'Data/prott5_embed'
     for family in os.listdir(direc):
-        print(family)
+
         # Check if anchors already exist
         if os.path.exists(f'Data/anchors/{family}/anchor_embed.txt'):
             continue
+        logging.info('Getting anchor for %s', family)
 
         # Get sequences and their consensus positions
         sequences = get_seqs(family)
@@ -293,8 +299,6 @@ def main():
 
         # Get anchor residues (embedding) for each sequence
         get_anchors(family, regions)
-        print(regions)
-        print()
 
 
 if __name__ == '__main__':
