@@ -14,6 +14,7 @@ import torch
 from transformers import T5EncoderModel, T5Tokenizer
 from utility import prot_t5xl_embed
 from query_anchors import query_search
+from idct_embed import quant2D
 
 logging.basicConfig(filename='Data/search_results.log',
                      level=logging.INFO, format='%(message)s')

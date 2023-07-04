@@ -14,21 +14,23 @@ from utility import prot_t5xl_embed
 from scipy.spatial.distance import cityblock
 
 
-def prefilter(anchor: np.ndarray, query: np.ndarray) -> bool:
+def prefilter(anchor: np.ndarray, query: np.ndarray, skip_n: int, minsim: float) -> bool:
     """=============================================================================================
     This function takes an anchor and query embedding and finds the similarity of the anchor to a
     subset of embeddings in the query to determine if it is worth comparing the rest of the query
 
     :param anchor: embedding of anchor sequence
     :param query: list of embeddings of query sequence
+    :param skip_n: number of embeddings to skip
+    :param sim_bound: similarity threshold
     :return bool: True if anchor is similar to one of the query embeddings, False otherwise
     ============================================================================================="""
 
-    n = len(query) // 3
+    n = len(query) // skip_n
     for embedding in query[::n]:  # Every nth embedding
         sim = np.dot(anchor, embedding) / \
             (np.linalg.norm(anchor) * np.linalg.norm(embedding))
-        if sim > 0.025:
+        if sim > minsim:
             return True
 
     return False
@@ -66,22 +68,22 @@ def query_search(query: np.ndarray, anchors: str, results: int) -> str:
             metric = []
 
             # If similarity is high enough, compare every embedding to anchor
-            #if prefilter(anchor, query):
+            #if prefilter(anchor, query, 3, 0.025):
             for embedding in query:
 
                 # Cosine similarity between anchor and query embedding
-                #sim = np.dot(anchor, embedding) / \
-                        #(np.linalg.norm(anchor) * np.linalg.norm(embedding))
-                #metric.append(sim)
+                sim = np.dot(anchor, embedding) / \
+                        (np.linalg.norm(anchor) * np.linalg.norm(embedding))
+                metric.append(sim)
 
                 # City block distance between anchor and query embedding
-                dist = (1/cityblock(anchor, embedding))
-                metric.append(dist)
+                #dist = (1/cityblock(anchor, embedding))
+                #metric.append(dist)
 
             max_sim = max(metric)  # Find most similar embedding of query to anchor
             sims[family].append(max_sim)
 
-                # Compare similarity to first anchor to average similarities of rest of results
+            # Compare similarity to first anchor to average similarities of rest of results
             if len(sims[family]) == 1 and len(sims) > 100:
                 if max_sim < np.mean(list(sims.values())[100]):
                     break  # If similarity is too low, stop comparing to rest of anchors
