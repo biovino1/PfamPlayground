@@ -30,7 +30,7 @@ a query are in the same clan as the correct family.
 
 embed_pfam.py uses the ProtT5-XL-U50 encoder to embed each sequence from the Pfam-A.seed database. It locally
 downloads the tokenizer and encoder required if they are not found in the directory. Each embedding is saved
-as a numpy array in a .txt file.
+as a numpy array in a binary .npy file.
 
 avg_embed.py calculates the average embedding for each family using sequences from the Pfam-A.seed database
 and saves it as a numpy array in a .txt file. This is performed by reading the consensus sequence for each
@@ -46,6 +46,9 @@ query_anchors.py allows the user to query a sequence against all of the anchors 
 the query sequence is most similar to. A fasta sequence or pre-embedded sequence can be used as input.
 
 search_anchors.py is a script used to test many queries at once against the anchors. It reports the total
-number of searches performed, the number that found a match, the number that found a match in the top 5
+number of searches performed, the number that found a match, the number that found a match in the top 10
 results, and the number where the first result was not the correct family but found in the same clan
 as the correct family.
+
+idct_embed.py takes embeddings and uses the inverse discrete cosine transform to compress the representations.
+This is used to reduce the size of the embeddings for filtering purposes during the search.

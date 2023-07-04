@@ -40,7 +40,8 @@ def embed_fam(path: str, tokenizer, model, device):
     for i, file in enumerate(files):  # pylint: disable=W0612
 
         # Check if embedding already exists
-        if os.path.exists(f'Data/prott5_embed/{ref_dir}/{file.split("/")[-1].replace(".fa", ".txt")}'):
+        if os.path.exists(f'Data/prott5_embed/{ref_dir}/'
+                        f'{file.split("/")[-1].replace(".fa", ".txt")}'):
             logging.info('Embedding for %s already exists. Skipping...', file)
             continue
 
@@ -54,9 +55,9 @@ def embed_fam(path: str, tokenizer, model, device):
             seq_emd = prot_t5xl_embed(seq, tokenizer, model, device)
 
             # Save embedding as numpy array
-            filename = file.rsplit('/', maxsplit=1)[-1].replace('.fa', '.txt')
-            with open(f'Data/prott5_embed/{ref_dir}/{filename}', 'w', encoding='utf8') as f:
-                np.savetxt(f, seq_emd, fmt='%4.6f', delimiter=' ')
+            filename = file.rsplit('/', maxsplit=1)[-1].replace('.fa', '.npy')
+            with open(f'Data/prott5_embed/{ref_dir}/{filename}', 'wb') as emb_f:
+                np.save(emb_f, seq_emd, allow_pickle=True)
 
     logging.info('Finished embedding sequences in %s\n', ref_dir)
 

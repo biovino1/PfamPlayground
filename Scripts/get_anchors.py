@@ -12,6 +12,7 @@ from math import ceil
 import matplotlib.pyplot as plt
 import numpy as np
 from avg_embed import get_seqs, cons_pos, get_embed
+from scipy.spatial.distance import cityblock
 
 logging.basicConfig(filename='Data/get_anchors.log',
                      level=logging.INFO, format='%(message)s')
@@ -70,6 +71,7 @@ def get_cos_sim(family: str, embeddings: dict) -> list:
 
         # Calculate cosine similarity between average embedding and each embedding for that position
         for emb in embed:
+            #sim = (1/cityblock(avg_vec, emb))
             sim = np.dot(avg_vec, emb) / (np.linalg.norm(avg_vec) * np.linalg.norm(emb))
             cos_sim[pos].append(sim)
 
@@ -250,6 +252,9 @@ def get_anchors(family: str, regions: dict):
         # Get middle position
         mid = ceil((len(reg[0]) - 1)/2)
         anchors_pos.append(reg[0][mid])
+
+    # Log anchor positions
+    logging.info('Anchor positions: %s', anchors_pos)
 
     # Grab embeddings from average embedding
     anchor_embed = []

@@ -11,6 +11,7 @@ import os
 import torch
 from transformers import T5EncoderModel, T5Tokenizer
 from utility import prot_t5xl_embed
+from scipy.spatial.distance import cityblock
 
 
 def prefilter(anchor: np.ndarray, query: np.ndarray) -> bool:
@@ -65,26 +66,25 @@ def query_search(query: np.ndarray, anchors: str, results: int) -> str:
             metric = []
 
             # If similarity is high enough, compare every embedding to anchor
-            if prefilter(anchor, query):
-                for embedding in query:
+            #if prefilter(anchor, query):
+            for embedding in query:
 
-                    # Cosine similarity between anchor and query embedding
-                    sim = np.dot(anchor, embedding) / \
-                        (np.linalg.norm(anchor) * np.linalg.norm(embedding))
-                    metric.append(sim)
+                # Cosine similarity between anchor and query embedding
+                #sim = np.dot(anchor, embedding) / \
+                        #(np.linalg.norm(anchor) * np.linalg.norm(embedding))
+                #metric.append(sim)
 
-                    # Euclidean distance between anchor and query embedding
-                    #dist = (1/np.linalg.norm(anchor-embedding))
-                    #metric.append(dist)
-                    #all_sims.append(dist)
+                # City block distance between anchor and query embedding
+                dist = (1/cityblock(anchor, embedding))
+                metric.append(dist)
 
-                max_sim = max(metric)  # Find most similar embedding of query to anchor
-                sims[family].append(max_sim)
+            max_sim = max(metric)  # Find most similar embedding of query to anchor
+            sims[family].append(max_sim)
 
                 # Compare similarity to first anchor to average similarities of rest of results
-                if len(sims[family]) == 1 and len(sims) > 100:
-                    if max_sim < np.mean(list(sims.values())[100]):
-                        break  # If similarity is too low, stop comparing to rest of anchors
+            if len(sims[family]) == 1 and len(sims) > 100:
+                if max_sim < np.mean(list(sims.values())[100]):
+                    break  # If similarity is too low, stop comparing to rest of anchors
 
         # Average similarities across all query embeddings to anchor embeddings
         if len(sims[family]) == 0:
