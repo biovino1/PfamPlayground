@@ -67,3 +67,7 @@ accuracy (family of the query sequence is in top 10 results), searches take a li
 This is much too slow for practical homolog search, nor is the accuracy high enough. Different filtering
 methods have been tried to reduce this time, however, accuracy is reduced as well. The fastest time per query
 in our testing has been 20 seconds with 85% accuracy. This is still too slow and inaccurate.
+
+If we cannot reduce the number of anchors searched to reduce search time, then we must find a way to reduce
+the size of sequence representations. Using the inverse discrete cosine transform, we can reduce the size of
+the embeddings from a large N x 1024 matrix to a single array of with size of our choosing.

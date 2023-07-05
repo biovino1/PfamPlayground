@@ -45,12 +45,12 @@ def query_sim(anchor: np.ndarray, query: np.ndarray, sims: dict, family: str, me
     This function takes an anchor embedding (1D array) and a query embedding (2D array) and finds
     the similarity between the anchor and each embedding in the query.
 
-    :param query: embedding of query sequence
     :param anchor: embedding of anchor sequence
+    :param query: embedding of query sequence
     :param sims: dictionary of similarities between anchor and query embeddings
     :param family: name of anchor family
     :param metric: similarity metric
-    :return float: updated dictionary
+    :return sims: updated dictionary
     ============================================================================================="""
 
     sim_list = []
@@ -79,16 +79,16 @@ def query_sim(anchor: np.ndarray, query: np.ndarray, sims: dict, family: str, me
     return sims
 
 
-def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> str:
+def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> dict:
     """=============================================================================================
-    This function takes a query embedding, a directory of anchor embeddings, and finds the most
-    similar anchor embedding based on cosine similarity.
+    This function takes a query embedding, a directory of anchor embeddings, and returns a dict
+    of the top n most similar anchor families.
 
     :param query: embedding of query sequence
     :param anchors: directory of anchor embeddings
     :param results: number of results to return
     :param metric: similarity metric
-    :return str: name of anchor family with highest similarity
+    :return top_sims: dict where keys are anchor families and values are similarity scores
     ============================================================================================="""
 
     # Search query against every set of anchors
@@ -174,7 +174,7 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
     model.to(device)
 
-    # Call query_anchors for every query sequence in a folder
+    # Call query_search for every query sequence in a folder
     match, top, clan, total = 0, 0, 0, 0
     direc = 'Data/full_seqs'
     for fam in os.listdir(direc):

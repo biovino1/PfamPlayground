@@ -40,41 +40,58 @@ def embed_query(sequence: str, tokenizer: T5Tokenizer, model: T5EncoderModel, de
     return embed
 
 
-def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> str:
+def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, seq: str, metric: str) -> dict:
     """=============================================================================================
-    This function takes a query embedding, a directory of anchor embeddings, and finds the most
-    similar anchor embedding based on cosine similarity.
+    This function takes a dct vector (1D array) and a query dct vector (1D array) and finds the
+    similarity between the two vectors
+
+    :param dct: dct vector of sequence from database
+    :param query: dct vector of embedded query sequence
+    :param sims: dictionary of similarities between dct and query vectors
+    :param family: name of dct sequence
+    :param metric: similarity metric
+    :return float: updated dictionary
+    ============================================================================================="""
+
+    # Cosine similarity between dct and query embedding
+    if metric == 'cosine':
+        sim = np.dot(dct, query) / \
+            (np.linalg.norm(dct) * np.linalg.norm(query))
+        sims[seq].append(sim)
+
+    # City block distance between dct and query embedding
+    if metric == 'cityblock':
+        dist = 1/cityblock(dct, query)
+        sims[seq].append(dist)
+
+    return sims
+
+
+def query_search(query: np.ndarray, dcts: str, results: int, metric: str) -> dict:
+    """=============================================================================================
+    This function takes a query embedding, a directory of dct embeddings, and returns a dict
+    of the top n most similar dct embeddings.
 
     :param query: embedding of query sequence
-    :param anchors: directory of anchor embeddings
+    :param dcts: directory of dcts embeddings
     :param results: number of results to return
-    :return str: name of anchor family with highest similarity
+    :param metric: similarity metric
+    :return top_sims: dict where keys are dct embeddings and values are similarity scores
     ============================================================================================="""
 
     # Search query against every dct embedding
     sims = {}
-    for family in os.listdir(anchors):
-        for dct in os.listdir(f'{anchors}/{family}'):
+    for family in os.listdir(dcts):
+        for dct in os.listdir(f'{dcts}/{family}'):
+            dct_emb = np.load(f'{dcts}/{family}/{dct}')
 
-            dct_emb = np.load(f'{anchors}/{family}/{dct}')
+            # Add seq to sims dict
+            seq = f'{family}/{dct.strip(".npy")}'
+            if seq not in sims:
+                sims[seq] = []
 
-
-    '''
-        ancs_emb = np.loadtxt(anchors)
-
-        # I think np.loadtxt loads a single line as a 1D array, so convert to 2D or else
-        # max_sim = max(cos_sim) will throw an error
-        if len(ancs_emb) == 1024:
-            ancs_emb = [ancs_emb]
-
-        # Add family to sims dict
-        if family not in sims:
-            sims[family] = []
-
-        # Compare every anchor embedding to query embedding
-        for anchor in ancs_emb:
-            sims = query_sim(anchor, query, sims, family, metric)
-        sims[family] = np.mean(sims[family])
+            # Compare every dct embedding to query
+            sims = query_sim(dct_emb, query, sims, seq, metric)
 
     # Sort sims dict and return top n results
     top_sims = {}
@@ -82,12 +99,47 @@ def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> 
         top_sims[key] = sims[key]
 
     return top_sims
-    '''
+
+
+def search_results(query: str, results: dict):
+    """=============================================================================================
+    This function compares a query sequence to a dictionary of results.
+
+    :param query: query sequence
+    :param results: dictionary of results from searching query against dcts
+    ============================================================================================="""
+
+    # Log time and similarity for each result
+    logging.info('%s\n%s', datetime.datetime.now(), query)
+    for fam, sim in results.items():
+        logging.info('%s,%s', fam, sim)
+
+    # See if query is in top results
+    results_fams = [fam.split('/')[0] for fam in results.keys()]
+    query_fam = query.split('/')[0]
+    match, top, clan = 0, 0, 0
+    if query_fam == results_fams[0]:  # Top result
+        match += 1
+        return match, top, clan
+    if query_fam in results_fams:  # Top n results
+        top += 1
+        return match, top, clan
+
+    # Read clans dict and see if query is in same clan as top result
+    with open('Data/clans.pkl', 'rb') as file:
+        clans = pickle.load(file)
+    for fams in clans.values():
+        if query_fam in fams and results_fams[0] in fams:
+            clan += 1
+            return match, top, clan
+
+    return match, top, clan
 
 
 def main():
     """=============================================================================================
-    Main
+    Main function loads tokenizer and model, randomly samples a query sequence from a family, embeds
+    and transforms the query, searches the query against DCT vectors, and logs the results
     ============================================================================================="""
 
     if os.path.exists('Data/t5_tok.pt'):
@@ -104,13 +156,11 @@ def main():
     # Load model to gpu if available
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
     model.to(device)
-    print(device)
 
-    # Call query_anchors for every query sequence in a folder
+    # Call query_search for every query sequence in a folder
     match, top, clan, total = 0, 0, 0, 0
     direc = 'Data/full_seqs'
     for fam in os.listdir(direc):
-
         if fam not in os.listdir('Data/dct_embed'):
             continue
 
@@ -118,14 +168,14 @@ def main():
         queries = os.listdir(f'{direc}/{fam}')
         query = sample(queries, 1)[0]
         seq_file = f'{direc}/{fam}/{query}'
-        #embed = embed_query(seq_file, tokenizer, model, device)
-        #embed = quant2D(embed, 8, 8)  # 8x8 DCT
+        embed = embed_query(seq_file, tokenizer, model, device)
+        embed = quant2D(embed, 16, 16)  # nxn 1D array
 
         # Search idct embeddings and analyze results
-        query_search(seq_file, 'Data/dct_embed', 10, 'cosine')
-        #m, t, c = search_results(f'{fam}/{query}', results)
-        #(match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
-        #logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)
+        results = query_search(embed, 'Data/dct_embed', 10, 'cityblock')
+        m, t, c = search_results(f'{fam}/{query}', results)
+        (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
+        logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)
 
 
 if __name__ == '__main__':

@@ -10,9 +10,6 @@ import logging
 import numpy as np
 from scipy.fft import dct, idct
 
-logging.basicConfig(filename='Data/idct_embed.log',
-                     level=logging.INFO, format='%(message)s')
-
 
 def scale(vec: np.ndarray) -> np.ndarray:
     """=============================================================================================
@@ -66,6 +63,9 @@ def main():
     discrete cosine transform.
     ============================================================================================="""
 
+    logging.basicConfig(filename='Data/idct_embed.log',
+                     level=logging.INFO, format='%(message)s')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='Data/prott5_embed')
     args = parser.parse_args()
@@ -83,7 +83,7 @@ def main():
 
             # Load embedding and perform iDCT
             embed = np.load(emb_path)
-            embed = quant2D(embed, 8, 8)  # 8x8 DCT
+            embed = quant2D(embed, 16, 16)  # nxn 1D array
             np.save(f'{dct_path}/{emb}', embed)
 
         logging.info('iDCT performed on %s...', emb_path)
