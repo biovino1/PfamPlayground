@@ -16,11 +16,11 @@ from transformers import T5EncoderModel, T5Tokenizer
 from utility import prot_t5xl_embed
 from scipy.spatial.distance import cityblock
 
-logging.basicConfig(filename='Data/search_results.log',
+logging.basicConfig(filename='Data/anchor_search.log',
                      level=logging.INFO, format='%(message)s')
 
 
-def embed_query(sequence, tokenizer, model, device):
+def embed_query(sequence: str, tokenizer: T5Tokenizer, model: T5EncoderModel, device) -> np.ndarray:
     """=============================================================================================
     This function embeds a query sequence and saves it to file. query_anchors.py can also perform
     this function when a fasta file is passed through, but this is more efficient when running
@@ -79,7 +79,7 @@ def query_sim(anchor: np.ndarray, query: np.ndarray, sims: dict, family: str, me
     return sims
 
 
-def query_search(query: np.ndarray, metric: str, anchors: str, results: int) -> str:
+def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> str:
     """=============================================================================================
     This function takes a query embedding, a directory of anchor embeddings, and finds the most
     similar anchor embedding based on cosine similarity.
@@ -87,14 +87,15 @@ def query_search(query: np.ndarray, metric: str, anchors: str, results: int) -> 
     :param query: embedding of query sequence
     :param anchors: directory of anchor embeddings
     :param results: number of results to return
+    :param metric: similarity metric
     :return str: name of anchor family with highest similarity
     ============================================================================================="""
 
     # Search query against every set of anchors
     sims = {}
     for family in os.listdir(anchors):
-        anchors = f'Data/anchors/{family}/anchor_embed.txt'
-        ancs_emb = np.loadtxt(anchors)
+        anchors = f'Data/anchors/{family}/anchor_embed.npy'
+        ancs_emb = np.load(anchors)
 
         # I think np.loadtxt loads a single line as a 1D array, so convert to 2D or else
         # max_sim = max(cos_sim) will throw an error
@@ -188,7 +189,7 @@ def main():
         embed = embed_query(seq_file, tokenizer, model, device)
 
         # Search anchors and analyze results
-        results = query_search(embed, 'cosine', 'Data/anchors', 10)
+        results = query_search(embed, 'Data/anchors', 10, 'cosine')
         m, t, c = search_results(f'{fam}/{query}', results)
         (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
         logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)

@@ -5,10 +5,10 @@ Ben Iovino  07/04/23   SearchEmb
 ================================================================================================"""
 
 import argparse
-import numpy as np
 import os
-from scipy.fft import dct, idct
 import logging
+import numpy as np
+from scipy.fft import dct, idct
 
 logging.basicConfig(filename='Data/idct_embed.log',
                      level=logging.INFO, format='%(message)s')
@@ -37,10 +37,10 @@ def iDCTquant(vec: np.ndarray, num: int) -> np.ndarray:
     ============================================================================================="""
 
     f = dct(vec.T, type=2, norm='ortho')
-    trans = idct(f[:,:num], type=2, norm='ortho')
+    trans = idct(f[:,:num], type=2, norm='ortho')  #pylint: disable=E1126
     for i in range(len(trans)):  #pylint: disable=C0200
-        trans[i] = scale(trans[i])
-    return trans.T
+        trans[i] = scale(trans[i])  #pylint: disable=E1137
+    return trans.T  #pylint: disable=E1101
 
 
 def quant2D(emb: np.ndarray, n: int, m: int) -> np.ndarray:
@@ -54,7 +54,7 @@ def quant2D(emb: np.ndarray, n: int, m: int) -> np.ndarray:
     :return: transformed embedding (n*m 1D array)
     ============================================================================================="""
 
-    dct = iDCTquant(emb[1:len(emb)-1],n)
+    dct = iDCTquant(emb[1:len(emb)-1],n)  #pylint: disable=W0621
     ddct = iDCTquant(dct.T,m).T
     ddct = ddct.reshape(n*m)
     return (ddct*127).astype('int8')
@@ -62,7 +62,8 @@ def quant2D(emb: np.ndarray, n: int, m: int) -> np.ndarray:
 
 def main():
     """=============================================================================================
-    Main takes a directory of embeddings
+    Main takes a directory of embeddings and calls quant2D on each one to return its inverse
+    discrete cosine transform.
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
@@ -85,7 +86,7 @@ def main():
             embed = quant2D(embed, 8, 8)  # 8x8 DCT
             np.save(f'{dct_path}/{emb}', embed)
 
-            logging.info('iDCT performed on %s...', emb_path)
+        logging.info('iDCT performed on %s...', emb_path)
 
 
 if __name__ == '__main__':

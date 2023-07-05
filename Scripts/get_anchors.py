@@ -60,7 +60,7 @@ def get_cos_sim(family: str, embeddings: dict) -> list:
     ============================================================================================="""
 
     # Get average embedding
-    avg_embed = np.loadtxt(f'Data/avg_embed/{family}/avg_embed.txt')
+    avg_embed = np.load(f'Data/avg_embed/{family}/avg_embed.npy')
 
     # Get cosine similarity between average embedding and each position
     cos_sim = {}
@@ -243,7 +243,7 @@ def get_anchors(family: str, regions: dict):
     ============================================================================================="""
 
     # Get average embedding
-    avg_embed = np.loadtxt(f'Data/avg_embed/{family}/avg_embed.txt')
+    avg_embed = np.load(f'Data/avg_embed/{family}/avg_embed.npy')
 
     # For each set of regions, find anchor residues
     anchors_pos = []
@@ -264,7 +264,8 @@ def get_anchors(family: str, regions: dict):
     # Save anchor embeddings to file
     if not os.path.exists(f'Data/anchors/{family}'):
         os.makedirs(f'Data/anchors/{family}')
-    np.savetxt(f'Data/anchors/{family}/anchor_embed.txt', anchor_embed, '%.6e')
+    with open(f'Data/anchors/{family}/anchor_embed.npy', 'wb') as emb_f:
+        np.save(emb_f, anchor_embed, allow_pickle=True)
 
 
 def main():
