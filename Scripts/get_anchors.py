@@ -11,8 +11,7 @@ import os
 from math import ceil
 import matplotlib.pyplot as plt
 import numpy as np
-from avg_embed import get_seqs, cons_pos, get_embed
-from scipy.spatial.distance import cityblock
+from embed_avg import get_seqs, cons_pos, get_embed
 
 logging.basicConfig(filename='Data/get_anchors.log',
                      level=logging.INFO, format='%(message)s')
@@ -71,7 +70,6 @@ def get_cos_sim(family: str, embeddings: dict) -> list:
 
         # Calculate cosine similarity between average embedding and each embedding for that position
         for emb in embed:
-            #sim = (1/cityblock(avg_vec, emb))
             sim = np.dot(avg_vec, emb) / (np.linalg.norm(avg_vec) * np.linalg.norm(emb))
             cos_sim[pos].append(sim)
 

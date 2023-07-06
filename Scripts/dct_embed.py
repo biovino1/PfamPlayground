@@ -63,7 +63,7 @@ def main():
     discrete cosine transform.
     ============================================================================================="""
 
-    logging.basicConfig(filename='Data/idct_embed.log',
+    logging.basicConfig(filename='Data/dct_embed.log',
                      level=logging.INFO, format='%(message)s')
 
     parser = argparse.ArgumentParser()
@@ -71,22 +71,30 @@ def main():
     args = parser.parse_args()
 
     # Go through embeddings and call idct on each one
-    direc = args.d
-    for fam in os.listdir(direc):  # Each family in the directory
-        for emb in os.listdir(direc + '/' + fam):  # Each emb in the family
-            emb_path = direc + '/' + fam + '/' + emb
+    for fam in os.listdir(args.d):  # Each family in the directory
+        logging.info('iDCT being performed on %s...', fam)
+
+        # Skip family if iDCT already performed
+        dct_direc = '/'.join(args.d.split("/")[:-1])  # Take off last directory
+        dct_direc = f'{dct_direc}/dct_embed'
+        if os.path.isdir(f'{dct_direc}/{fam}'):
+            logging.info('iDCT already performed on %s\n', fam)
+            continue
+
+        for emb in os.listdir(f'{args.d}/{fam}'):  # Each emb in the family
+            logging.info('iDCT being performed on %s...', emb)
+            emb_path = f'{args.d}/{fam}/{emb}'
 
             # Make embedding path
-            dct_path = direc.split('/')[0] + '/dct_embed/' + fam
+            dct_path = f'{dct_direc}/{fam}'
             if not os.path.isdir(dct_path):
                 os.makedirs(dct_path)
 
             # Load embedding and perform iDCT
             embed = np.load(emb_path)
-            embed = quant2D(embed, 16, 16)  # nxn 1D array
+            embed = quant2D(embed, 3, 55)  # nxn 1D array
             np.save(f'{dct_path}/{emb}', embed)
-
-        logging.info('iDCT performed on %s...', emb_path)
+        logging.info('iDCT performed on %s\n', fam)
 
 
 if __name__ == '__main__':

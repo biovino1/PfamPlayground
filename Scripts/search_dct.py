@@ -14,7 +14,7 @@ import numpy as np
 import torch
 from transformers import T5EncoderModel, T5Tokenizer
 from utility import prot_t5xl_embed
-from idct_embed import quant2D
+from dct_embed import quant2D
 from scipy.spatial.distance import cityblock
 
 logging.basicConfig(filename='Data/idct_search.log',
@@ -161,7 +161,7 @@ def main():
     match, top, clan, total = 0, 0, 0, 0
     direc = 'Data/full_seqs'
     for fam in os.listdir(direc):
-        if fam not in os.listdir('Data/dct_embed'):
+        if fam not in os.listdir('Data/avg_dct'):
             continue
 
         # Randomly sample one query from family
@@ -169,10 +169,10 @@ def main():
         query = sample(queries, 1)[0]
         seq_file = f'{direc}/{fam}/{query}'
         embed = embed_query(seq_file, tokenizer, model, device)
-        embed = quant2D(embed, 16, 16)  # nxn 1D array
+        embed = quant2D(embed, 3, 55)  # nxn 1D array
 
         # Search idct embeddings and analyze results
-        results = query_search(embed, 'Data/dct_embed', 10, 'cityblock')
+        results = query_search(embed, 'Data/avg_dct', 10, 'cityblock')
         m, t, c = search_results(f'{fam}/{query}', results)
         (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
         logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)
