@@ -92,7 +92,7 @@ def main():
 
             # Load embedding and perform iDCT
             embed = np.load(emb_path)
-            embed = quant2D(embed, 3, 55)  # nxn 1D array
+            embed = quant2D(embed, 3, 25)  # nxn 1D array
             np.save(f'{dct_path}/{emb}', embed)
         logging.info('iDCT performed on %s\n', fam)
 

@@ -98,7 +98,6 @@ def average_embed(family: str, positions: dict, embeddings: dict):
     :param family: name of Pfam family
     :param sequences: dict where seq id is key with sequence as value
     :param positions: dict where seq id is key with list of positions as value
-    :return dict: seq id is key with list of embeddings as value
     ============================================================================================="""
 
     # Create a dict of lists where each list contains the embeddings for a position in the consensus

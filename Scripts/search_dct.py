@@ -17,7 +17,7 @@ from utility import prot_t5xl_embed
 from dct_embed import quant2D
 from scipy.spatial.distance import cityblock
 
-logging.basicConfig(filename='Data/idct_search.log',
+logging.basicConfig(filename='Data/dct_search.log',
                      level=logging.INFO, format='%(message)s')
 
 
@@ -161,7 +161,7 @@ def main():
     match, top, clan, total = 0, 0, 0, 0
     direc = 'Data/full_seqs'
     for fam in os.listdir(direc):
-        if fam not in os.listdir('Data/avg_dct'):
+        if fam not in os.listdir('Data/dct_avg'):
             continue
 
         # Randomly sample one query from family
@@ -172,7 +172,7 @@ def main():
         embed = quant2D(embed, 3, 55)  # nxn 1D array
 
         # Search idct embeddings and analyze results
-        results = query_search(embed, 'Data/avg_dct', 10, 'cityblock')
+        results = query_search(embed, 'Data/dct_avg', 10, 'cityblock')
         m, t, c = search_results(f'{fam}/{query}', results)
         (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
         logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)
