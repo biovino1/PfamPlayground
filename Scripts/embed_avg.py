@@ -125,7 +125,7 @@ def average_embed(family: str, positions: dict, embeddings: dict):
 
     # Perform idct on avg_embed
     avg_embed = np.array(avg_embed)
-    avg_embed = quant2D(avg_embed, 3, 55)  # nxn 1D array
+    avg_embed = quant2D(avg_embed, 5, 44)  # nxn 1D array
     with open(f'Data/avg_dct/{family}/avg_dct.npy', 'wb') as emb_f:
         np.save(emb_f, avg_embed, allow_pickle=True)
 
