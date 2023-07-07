@@ -4,8 +4,10 @@ This script contains utility functions to be imported into other scripts.
 Ben Iovino  06/01/23   SearchEmb
 ================================================================================================"""
 
+import os
 import re
 import torch
+from transformers import T5EncoderModel, T5Tokenizer, AutoTokenizer, EsmModel
 
 
 def prot_t5xl_embed(seq: str, tokenizer, encoder, device) -> list:
@@ -42,3 +44,45 @@ def prot_t5xl_embed(seq: str, tokenizer, encoder, device) -> list:
         seq_emd = embedding[seq_num][:seq_len-1]
         features.append(seq_emd)
     return features[0]
+
+
+def load_model(encoder: str, device: str) -> tuple:
+    """=============================================================================================
+    This function loads the ProtT5-XL model and tokenizer and returns them.
+
+    :param encoder: prott5 or esm2
+    :param device: cpu or gpu
+    :return tuple: tokenizer and model
+    ============================================================================================="""
+
+    # ProtT5_XL_UniRef50
+    if encoder == 'prott5':
+        if os.path.exists('Data/t5_tok.pt'):
+            tokenizer = torch.load('Data/t5_tok.pt')
+        else:
+            tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_uniref50",
+                                                     do_lower_case=False)
+            torch.save(tokenizer, 'Data/t5_tok.pt')
+        if os.path.exists('Data/prot_t5_xl.pt'):
+            model = torch.load('Data/prot_t5_xl.pt')
+        else:
+            model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
+            torch.save(model, 'Data/prot_t5_xl.pt')
+
+    # ESM-2_t36_3B
+    if encoder == 'esm2':
+        if os.path.exists('Data/auto_tok.pt'):
+            tokenizer = torch.load('Data/auto_tok.pt')
+        else:
+            tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t48_15B_UR50D")
+            torch.save(tokenizer, 'Data/auto_tok.pt')
+        if os.path.exists('Data/esm2_t48_15B.pt'):
+            model = torch.load('Data/esm2_t48_15B.pt')
+        else:
+            model = EsmModel.from_pretrained("facebook/esm2_t48_15B_UR50D")
+            torch.save(model, 'Data/esm2_t36_15B.pt')
+
+    # Load model to gpu if available
+    model.to(device)
+
+    return tokenizer, model

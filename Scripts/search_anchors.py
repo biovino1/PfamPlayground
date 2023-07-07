@@ -13,7 +13,7 @@ from random import sample
 import numpy as np
 import torch
 from transformers import T5EncoderModel, T5Tokenizer
-from utility import prot_t5xl_embed
+from utility import prot_t5xl_embed, load_model
 from scipy.spatial.distance import cityblock
 
 logging.basicConfig(filename='Data/anchor_search.log',
@@ -159,20 +159,9 @@ def main():
     the query, searches the query against anchors, and logs the results
     ============================================================================================="""
 
-    if os.path.exists('Data/t5_tok.pt'):
-        tokenizer = torch.load('Data/t5_tok.pt')
-    else:
-        tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_uniref50", do_lower_case=False)
-        torch.save(tokenizer, 'Data/t5_tok.pt')
-    if os.path.exists('Data/prot_t5_xl.pt'):
-        model = torch.load('Data/prot_t5_xl.pt')
-    else:
-        model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
-        torch.save(model, 'Data/prot_t5_xl.pt')
-
-    # Load model to gpu if available
+    # Load tokenizer and encoder
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
-    model.to(device)
+    tokenizer, model = load_model('prott5', device)
 
     # Call query_search for every query sequence in a folder
     match, top, clan, total = 0, 0, 0, 0

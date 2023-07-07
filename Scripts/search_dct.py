@@ -13,7 +13,7 @@ from random import sample
 import numpy as np
 import torch
 from transformers import T5EncoderModel, T5Tokenizer
-from utility import prot_t5xl_embed
+from utility import prot_t5xl_embed, load_model
 from dct_embed import quant2D
 from scipy.spatial.distance import cityblock
 
@@ -142,20 +142,9 @@ def main():
     and transforms the query, searches the query against DCT vectors, and logs the results
     ============================================================================================="""
 
-    if os.path.exists('Data/t5_tok.pt'):
-        tokenizer = torch.load('Data/t5_tok.pt')
-    else:
-        tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_uniref50", do_lower_case=False)
-        torch.save(tokenizer, 'Data/t5_tok.pt')
-    if os.path.exists('Data/prot_t5_xl.pt'):
-        model = torch.load('Data/prot_t5_xl.pt')
-    else:
-        model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
-        torch.save(model, 'Data/prot_t5_xl.pt')
-
-    # Load model to gpu if available
+    # Load tokenizer and encoder
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
-    model.to(device)
+    tokenizer, model = load_model('prott5', device)
 
     # Call query_search for every query sequence in a folder
     match, top, clan, total = 0, 0, 0, 0
@@ -169,7 +158,7 @@ def main():
         query = sample(queries, 1)[0]
         seq_file = f'{direc}/{fam}/{query}'
         embed = embed_query(seq_file, tokenizer, model, device)
-        embed = quant2D(embed, 5, 44)  # nxn 1D array
+        embed = quant2D(embed, 4, 50)  # nxn 1D array
 
         # Search idct embeddings and analyze results
         results = query_search(embed, 'Data/avg_dct', 10, 'cityblock')
