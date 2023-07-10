@@ -140,8 +140,8 @@ def main():
     direc = 'Data/prott5_embed'
     for family in os.listdir(direc):
 
-        # Ignore files that already have an average embedding
-        if 'avg_embed.txt' in os.listdir(f'{direc}/{family}'):
+        # Check if average embedding already exists
+        if os.path.exists(f'Data/avg_embed/{family}/avg_embed.npy'):
             continue
 
         # Get sequences and their consensus positions

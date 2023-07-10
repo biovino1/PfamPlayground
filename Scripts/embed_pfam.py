@@ -65,7 +65,7 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', type=str, default='esm2')
+    parser.add_argument('-e', type=str, default='prott5')
     args = parser.parse_args()
 
     # Load tokenizer and encoder
@@ -75,6 +75,7 @@ def main():
     # Get names of all family folders and embed all seqs in each one
     families = [f'Data/families_nogaps/{fam}' for fam in os.listdir('Data/families_nogaps')]
     for fam in families:
+
         logging.info('Embedding sequences in %s...', fam)
         embed_fam(fam, tokenizer, model, device, args.e)
 
