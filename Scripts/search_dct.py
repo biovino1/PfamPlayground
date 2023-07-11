@@ -5,6 +5,7 @@ vectors along with their similarity scores.
 Ben Iovino  07/05/23   SearchEmb
 ================================================================================================"""
 
+import argparse
 import datetime
 import logging
 import os
@@ -142,6 +143,10 @@ def main():
     and transforms the query, searches the query against DCT vectors, and logs the results
     ============================================================================================="""
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', type=str, default='Data/avg_dct', help='direc of embeds to search')
+    args = parser.parse_args()
+
     # Load tokenizer and encoder
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
     tokenizer, model = load_model('prott5', device)
@@ -150,7 +155,7 @@ def main():
     match, top, clan, total = 0, 0, 0, 0
     direc = 'Data/full_seqs'
     for fam in os.listdir(direc):
-        if fam not in os.listdir('Data/avg_dct'):
+        if fam not in os.listdir(args.d):
             continue
 
         # Randomly sample one query from family
@@ -158,10 +163,13 @@ def main():
         query = sample(queries, 1)[0]
         seq_file = f'{direc}/{fam}/{query}'
         embed = embed_query(seq_file, tokenizer, model, device)
-        embed = quant2D(embed, 4, 50)  # nxn 1D array
+        try:
+            embed = quant2D(embed, 5, 44)  # nxn 1D array
+        except ValueError:
+            continue
 
         # Search idct embeddings and analyze results
-        results = query_search(embed, 'Data/avg_dct', 10, 'cityblock')
+        results = query_search(embed, 'Data/avg_dct', 100, 'cityblock')
         m, t, c = search_results(f'{fam}/{query}', results)
         (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
         logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)

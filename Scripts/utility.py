@@ -74,13 +74,13 @@ def load_model(encoder: str, device: str) -> tuple:
         if os.path.exists('Data/auto_tok.pt'):
             tokenizer = torch.load('Data/auto_tok.pt')
         else:
-            tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t48_15B_UR50D")
+            tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t36_3B_UR50D")
             torch.save(tokenizer, 'Data/auto_tok.pt')
-        if os.path.exists('Data/esm2_t48_15B.pt'):
-            model = torch.load('Data/esm2_t48_15B.pt')
+        if os.path.exists('Data/esm2_t36_3B.pt'):
+            model = torch.load('Data/esm2_t36_3B.pt')
         else:
-            model = EsmModel.from_pretrained("facebook/esm2_t48_15B_UR50D")
-            torch.save(model, 'Data/esm2_t36_15B.pt')
+            model = EsmModel.from_pretrained("facebook/esm2_t36_3B_UR50D")
+            torch.save(model, 'Data/esm2_t36_3B.pt')
 
     # Load model to gpu if available
     model.to(device)

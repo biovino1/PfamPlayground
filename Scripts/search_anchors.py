@@ -5,6 +5,7 @@ similar anchor sequence.
 Ben Iovino  05/24/23   SearchEmb
 ================================================================================================"""
 
+import argparse
 import datetime
 import logging
 import os
@@ -97,7 +98,7 @@ def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> 
         anchors = f'Data/anchors/{family}/anchor_embed.npy'
         ancs_emb = np.load(anchors)
 
-        # I think np.loadtxt loads a single line as a 1D array, so convert to 2D or else
+        # I think np.load loads a single line as a 1D array, so convert to 2D or else
         # max_sim = max(cos_sim) will throw an error
         if len(ancs_emb) == 1024:
             ancs_emb = [ancs_emb]
@@ -159,6 +160,10 @@ def main():
     the query, searches the query against anchors, and logs the results
     ============================================================================================="""
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', type=str, default='Data/anchors', help='direc of embeds to search')
+    args = parser.parse_args()
+
     # Load tokenizer and encoder
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
     tokenizer, model = load_model('prott5', device)
@@ -168,7 +173,7 @@ def main():
     direc = 'Data/full_seqs'
     for fam in os.listdir(direc):
 
-        if fam not in os.listdir('Data/anchors'):
+        if fam not in os.listdir(args.d):
             continue
 
         # Randomly sample one query from family

@@ -1,5 +1,5 @@
 """================================================================================================
-This script takes iDCT vectors from each Pfam family and averages them to create a single vector.
+This script finds the average iDCT of embeddings for each Pfam family and saves them to file.
 
 Ben Iovino  07/06/23    SearchEmb
 ================================================================================================"""
@@ -100,10 +100,10 @@ def main():
     parser.add_argument('-s1', type=int, default=5)
     parser.add_argument('-s2', type=int, default=44)
     parser.add_argument('-t', type=str, default='cons')
+    parser.add_argument('-d', type=str, default='Data/prott5_embed', help='direc of embeds to avg')
     args = parser.parse_args()
 
-    direc = 'Data/prott5_embed'
-    for fam in os.listdir(direc):
+    for fam in os.listdir(args.d):
 
         # Check if average embedding already exists
         if os.path.exists(f'Data/avg_dct/{fam}/avg_dct.npy'):
@@ -114,7 +114,7 @@ def main():
         positions = cons_pos(sequences)
 
         # Get embeddings for each sequence in family and average them
-        embed_direc = f'{direc}/{fam}'
+        embed_direc = f'{args.d}/{fam}'
         embeddings = get_embed(embed_direc, sequences)
         if args.t == 'cons':
             transform_cons(fam, positions, embeddings, args)

@@ -5,6 +5,7 @@ array in a new directory.
 Ben Iovino  05/12/23   SearchEmb
 ================================================================================================"""
 
+import argparse
 import os
 import numpy as np
 from Bio import SeqIO
@@ -127,7 +128,7 @@ def average_embed(family: str, positions: dict, embeddings: dict):
     avg_embed = np.array(avg_embed)
     avg_embed = quant2D(avg_embed, 5, 44)  # nxn 1D array
     with open(f'Data/avg_dct/{family}/avg_dct.npy', 'wb') as emb_f:
-        np.save(emb_f, avg_embed, allow_pickle=True)
+        np.save(emb_f, avg_embed)
 
 
 def main():
@@ -137,8 +138,11 @@ def main():
     average_embed() to average the embeddings and save them to file.
     ============================================================================================="""
 
-    direc = 'Data/prott5_embed'
-    for family in os.listdir(direc):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', type=str, default='Data/prott5_embed', help='direc of embeds to avg')
+    args = parser.parse_args()
+
+    for family in os.listdir(args.d):
 
         # Check if average embedding already exists
         if os.path.exists(f'Data/avg_embed/{family}/avg_embed.npy'):
@@ -149,7 +153,7 @@ def main():
         positions = cons_pos(sequences)
 
         # Get embeddings for each sequence in family and average them
-        embed_direc = f'{direc}/{family}'
+        embed_direc = f'{args.d}/{family}'
         embeddings = get_embed(embed_direc, sequences)
         average_embed(family, positions, embeddings)
 

@@ -53,7 +53,7 @@ def embed_fam(path: str, tokenizer, model, device, encoder: str):
             seq_emd = prot_t5xl_embed(seq, tokenizer, model, device)
             filename = file.rsplit('/', maxsplit=1)[-1].replace('.fa', '.npy')
             with open(f'Data/{encoder}_embed/{ref_dir}/{filename}', 'wb') as emb_f:
-                np.save(emb_f, seq_emd, allow_pickle=True)
+                np.save(emb_f, seq_emd)
 
     logging.info('Finished embedding sequences in %s\n', ref_dir)
 
