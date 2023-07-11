@@ -18,7 +18,7 @@ from utility import prot_t5xl_embed, load_model
 from dct_embed import quant2D
 from scipy.spatial.distance import cityblock
 
-logging.basicConfig(filename='Data/dct_search.log',
+logging.basicConfig(filename='Data/search_dct.log',
                      level=logging.INFO, format='%(message)s')
 
 
@@ -144,6 +144,8 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('-s1', type=int, default=5)
+    parser.add_argument('-s2', type=int, default=44)
     parser.add_argument('-d', type=str, default='Data/avg_dct', help='direc of embeds to search')
     args = parser.parse_args()
 
@@ -164,8 +166,8 @@ def main():
         seq_file = f'{direc}/{fam}/{query}'
         embed = embed_query(seq_file, tokenizer, model, device)
         try:
-            embed = quant2D(embed, 5, 44)  # nxn 1D array
-        except ValueError:
+            embed = quant2D(embed, args.s1, args.s2)  # nxn 1D array
+        except ValueError:  # Some sequences are too short to transform
             continue
 
         # Search idct embeddings and analyze results

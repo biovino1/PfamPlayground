@@ -17,7 +17,7 @@ from transformers import T5EncoderModel, T5Tokenizer
 from utility import prot_t5xl_embed, load_model
 from scipy.spatial.distance import cityblock
 
-logging.basicConfig(filename='Data/anchor_search.log',
+logging.basicConfig(filename='Data/search_anchors.log',
                      level=logging.INFO, format='%(message)s')
 
 
