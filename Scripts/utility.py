@@ -46,6 +46,24 @@ def prot_t5xl_embed(seq: str, tokenizer, encoder, device) -> list:
     return features[0]
 
 
+def esm2_embed(seq: str, tokenizer, encoder):
+    """=============================================================================================
+    This function accepts a protein sequence and returns a list of vectors, each vector representing
+    a single amino acid using Facebook's ESM-2 model.
+
+    :param seq: protein sequence
+    :param: tokenizer: tokenizer model
+    :param encoder: encoder model
+    return: list of vectors
+    ============================================================================================="""
+
+    inputs = tokenizer(seq, return_tensors="pt")
+    with torch.no_grad():
+        outputs = encoder(**inputs)
+    last_hidden_states = outputs.last_hidden_state
+    return last_hidden_states[0][1:-1]  # First and last tokens are BOS and EOS tokens
+
+
 def load_model(encoder: str, device: str) -> tuple:
     """=============================================================================================
     This function loads the ProtT5-XL model and tokenizer and returns them.

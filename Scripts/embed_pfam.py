@@ -10,7 +10,7 @@ import logging
 import os
 import torch
 import numpy as np
-from utility import prot_t5xl_embed, load_model
+from utility import prot_t5xl_embed, esm2_embed, load_model
 
 logging.basicConfig(filename='Data/embed_pfam.log',
                      level=logging.INFO, format='%(asctime)s %(message)s')
@@ -50,7 +50,10 @@ def embed_fam(path: str, tokenizer, model, device, encoder: str):
         with open(file, 'r', encoding='utf8') as fa_file:
             logging.info('Embedding %s...', file)
             seq = ''.join([line.strip('\n') for line in fa_file.readlines()[1:]])
-            seq_emd = prot_t5xl_embed(seq, tokenizer, model, device)
+            if encoder == 'prott5':
+                seq_emd = prot_t5xl_embed(seq, tokenizer, model, device)
+            elif encoder == 'esm2':
+                seq_emd = esm2_embed(seq, tokenizer, model)
             filename = file.rsplit('/', maxsplit=1)[-1].replace('.fa', '.npy')
             with open(f'Data/{encoder}_embed/{ref_dir}/{filename}', 'wb') as emb_f:
                 np.save(emb_f, seq_emd)
