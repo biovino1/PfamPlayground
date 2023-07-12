@@ -68,6 +68,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='Data/prott5_embed')
+    parser.add_argument('-s1', type=int, default=5)
+    parser.add_argument('-s2', type=int, default=44)
     args = parser.parse_args()
 
     # Go through embeddings and call idct on each one
@@ -92,7 +94,7 @@ def main():
 
             # Load embedding and perform iDCT
             embed = np.load(emb_path)
-            embed = quant2D(embed, 3, 25)  # nxn 1D array
+            embed = quant2D(embed, args.s1, args.s2)  # nxn 1D array
             np.save(f'{dct_path}/{emb}', embed)
         logging.info('iDCT performed on %s\n', fam)
 

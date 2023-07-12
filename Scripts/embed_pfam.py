@@ -10,7 +10,7 @@ import logging
 import os
 import torch
 import numpy as np
-from utility import prot_t5xl_embed, esm2_embed, load_model
+from utility import load_model, embed_seq
 
 logging.basicConfig(filename='Data/embed_pfam.log',
                      level=logging.INFO, format='%(asctime)s %(message)s')
@@ -38,7 +38,7 @@ def embed_fam(path: str, tokenizer, model, device, encoder: str):
     files = [f'{path}/{file}' for file in os.listdir(path) if file.endswith('.fa')]
 
     # Open each fasta file
-    for i, file in enumerate(files):  # pylint: disable=W0612
+    for file in files:
 
         # Check if embedding already exists
         if os.path.exists(f'Data/{encoder}_embed/{ref_dir}/'
@@ -50,13 +50,12 @@ def embed_fam(path: str, tokenizer, model, device, encoder: str):
         with open(file, 'r', encoding='utf8') as fa_file:
             logging.info('Embedding %s...', file)
             seq = ''.join([line.strip('\n') for line in fa_file.readlines()[1:]])
-            if encoder == 'prott5':
-                seq_emd = prot_t5xl_embed(seq, tokenizer, model, device)
-            elif encoder == 'esm2':
-                seq_emd = esm2_embed(seq, tokenizer, model)
+            embed = embed_seq(seq, tokenizer, model, device, encoder)
             filename = file.rsplit('/', maxsplit=1)[-1].replace('.fa', '.npy')
             with open(f'Data/{encoder}_embed/{ref_dir}/{filename}', 'wb') as emb_f:
-                np.save(emb_f, seq_emd)
+                np.save(emb_f, embed)
+
+        break
 
     logging.info('Finished embedding sequences in %s\n', ref_dir)
 
@@ -68,7 +67,7 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', type=str, default='prott5')
+    parser.add_argument('-e', type=str, default='esm2')
     args = parser.parse_args()
 
     # Load tokenizer and encoder
@@ -81,6 +80,8 @@ def main():
 
         logging.info('Embedding sequences in %s...', fam)
         embed_fam(fam, tokenizer, model, device, args.e)
+
+        break
 
 
 if __name__ == '__main__':

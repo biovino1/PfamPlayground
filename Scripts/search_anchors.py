@@ -161,12 +161,13 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='Data/anchors', help='direc of embeds to search')
+    parser.add_argument('-d', type=str, default='Data/anchors')
+    parser.add_argument('e', type=str, default='prott5')
     args = parser.parse_args()
 
     # Load tokenizer and encoder
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
-    tokenizer, model = load_model('prott5', device)
+    tokenizer, model = load_model(args.e, device)
 
     # Call query_search for every query sequence in a folder
     match, top, clan, total = 0, 0, 0, 0
@@ -183,7 +184,7 @@ def main():
         embed = embed_query(seq_file, tokenizer, model, device)
 
         # Search anchors and analyze results
-        results = query_search(embed, 'Data/anchors', 10, 'cosine')
+        results = query_search(embed, args.d, 10, 'cosine')
         m, t, c = search_results(f'{fam}/{query}', results)
         (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
         logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)

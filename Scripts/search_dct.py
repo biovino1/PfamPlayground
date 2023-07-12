@@ -144,14 +144,15 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('-d', type=str, default='Data/avg_dct')
+    parser.add_argument('-e', type=str, default='prott5')
     parser.add_argument('-s1', type=int, default=5)
     parser.add_argument('-s2', type=int, default=44)
-    parser.add_argument('-d', type=str, default='Data/avg_dct', help='direc of embeds to search')
     args = parser.parse_args()
 
     # Load tokenizer and encoder
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
-    tokenizer, model = load_model('prott5', device)
+    tokenizer, model = load_model(args.e, device)
 
     # Call query_search for every query sequence in a folder
     match, top, clan, total = 0, 0, 0, 0
@@ -171,7 +172,7 @@ def main():
             continue
 
         # Search idct embeddings and analyze results
-        results = query_search(embed, 'Data/avg_dct', 100, 'cityblock')
+        results = query_search(embed, args.d, 100, 'cityblock')
         m, t, c = search_results(f'{fam}/{query}', results)
         (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
         logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)

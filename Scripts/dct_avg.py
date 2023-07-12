@@ -97,10 +97,10 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('-d', type=str, default='Data/prott5_embed', help='direc of embeds to avg')
     parser.add_argument('-s1', type=int, default=5)
     parser.add_argument('-s2', type=int, default=44)
     parser.add_argument('-t', type=str, default='cons')
-    parser.add_argument('-d', type=str, default='Data/prott5_embed', help='direc of embeds to avg')
     args = parser.parse_args()
 
     for fam in os.listdir(args.d):
