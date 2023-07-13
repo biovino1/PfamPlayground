@@ -55,8 +55,6 @@ def embed_fam(path: str, tokenizer, model, device, encoder: str):
             with open(f'Data/{encoder}_embed/{ref_dir}/{filename}', 'wb') as emb_f:
                 np.save(emb_f, embed)
 
-        break
-
     logging.info('Finished embedding sequences in %s\n', ref_dir)
 
 
@@ -67,7 +65,7 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-e', type=str, default='esm2')
+    parser.add_argument('-e', type=str, default='prott5')
     args = parser.parse_args()
 
     # Load tokenizer and encoder
@@ -80,8 +78,6 @@ def main():
 
         logging.info('Embedding sequences in %s...', fam)
         embed_fam(fam, tokenizer, model, device, args.e)
-
-        break
 
 
 if __name__ == '__main__':

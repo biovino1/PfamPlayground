@@ -9,7 +9,6 @@ import argparse
 import os
 import numpy as np
 from Bio import SeqIO
-from dct_embed import quant2D
 
 
 def get_seqs(family: str) -> dict:
@@ -123,12 +122,6 @@ def average_embed(family: str, positions: dict, embeddings: dict):
         os.makedirs(f'Data/avg_dct/{family}')
     with open(f'Data/avg_embed/{family}/avg_embed.npy', 'wb') as emb_f:
         np.save(emb_f, avg_embed, allow_pickle=True)
-
-    # Perform idct on avg_embed
-    avg_embed = np.array(avg_embed)
-    avg_embed = quant2D(avg_embed, 5, 44)  # nxn 1D array
-    with open(f'Data/avg_dct/{family}/avg_dct.npy', 'wb') as emb_f:
-        np.save(emb_f, avg_embed)
 
 
 def main():
