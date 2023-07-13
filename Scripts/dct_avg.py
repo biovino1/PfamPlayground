@@ -6,6 +6,7 @@ Ben Iovino  07/06/23    SearchEmb
 
 import argparse
 import os
+import logging
 import numpy as np
 from dct_embed import quant2D
 from embed_avg import get_seqs, cons_pos, get_embed
@@ -126,6 +127,9 @@ def main():
     or transform_embs to get DCT transform of entire embeddings and save them to file.
     ============================================================================================="""
 
+    logging.basicConfig(filename='Data/dct_avg.log',
+                     level=logging.INFO, format='%(message)s')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='Data/prott5_embed', help='direc of embeds to avg')
     parser.add_argument('-s1', type=int, default=5)
@@ -134,7 +138,8 @@ def main():
     args = parser.parse_args()
 
     dcts = []
-    for fam in os.listdir(args.d):
+    for i, fam in enumerate(os.listdir(args.d)):
+        logging.info('Averaging embeddings for %s, %s', fam, i)
 
         # Get sequences and their consensus positions
         sequences = get_seqs(fam)

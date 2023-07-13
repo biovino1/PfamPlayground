@@ -41,7 +41,7 @@ def embed_query(sequence: str, tokenizer: T5Tokenizer, model: T5EncoderModel, de
     return embed
 
 
-def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, seq: str, metric: str) -> dict:
+def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, fam: str, metric: str) -> dict:
     """=============================================================================================
     This function takes a dct vector (1D array) and a query dct vector (1D array) and finds the
     similarity between the two vectors
@@ -49,7 +49,7 @@ def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, seq: str, metric: 
     :param dct: dct vector of sequence from database
     :param query: dct vector of embedded query sequence
     :param sims: dictionary of similarities between dct and query vectors
-    :param family: name of dct sequence
+    :param fam: name of dct sequence
     :param metric: similarity metric
     :return float: updated dictionary
     ============================================================================================="""
@@ -58,23 +58,23 @@ def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, seq: str, metric: 
     if metric == 'cosine':
         sim = np.dot(dct, query) / \
             (np.linalg.norm(dct) * np.linalg.norm(query))
-        sims[seq].append(sim)
+        sims[fam].append(sim)
 
     # City block distance between dct and query embedding
     if metric == 'cityblock':
         dist = 1/cityblock(dct, query)
-        sims[seq].append(dist)
+        sims[fam].append(dist)
 
     return sims
 
 
-def query_search(query: np.ndarray, dcts: str, results: int, metric: str) -> dict:
+def query_search(query: np.ndarray, search_db: np.ndarray, results: int, metric: str) -> dict:
     """=============================================================================================
     This function takes a query embedding, a directory of dct embeddings, and returns a dict
     of the top n most similar dct embeddings.
 
     :param query: embedding of query sequence
-    :param dcts: directory of dcts embeddings
+    :param search_db: np array of dct embeddings
     :param results: number of results to return
     :param metric: similarity metric
     :return top_sims: dict where keys are dct embeddings and values are similarity scores
@@ -82,17 +82,11 @@ def query_search(query: np.ndarray, dcts: str, results: int, metric: str) -> dic
 
     # Search query against every dct embedding
     sims = {}
-    for family in os.listdir(dcts):
-        for dct in os.listdir(f'{dcts}/{family}'):
-            dct_emb = np.load(f'{dcts}/{family}/{dct}')
-
-            # Add seq to sims dict
-            seq = f'{family}/{dct.strip(".npy")}'
-            if seq not in sims:
-                sims[seq] = []
-
-            # Compare every dct embedding to query
-            sims = query_sim(dct_emb, query, sims, seq, metric)
+    for dct in search_db:
+        fam, dct = dct[0], dct[1]  # family name, dct vector for family
+        if fam not in sims:  # store sims in dict
+            sims[fam] = []
+        sims = query_sim(dct, query, sims, fam, metric)  # compare query to dct
 
     # Sort sims dict and return top n results
     top_sims = {}
@@ -144,7 +138,7 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='Data/avg_dct')
+    parser.add_argument('-d', type=str, default='Data/avg_dct.npy')
     parser.add_argument('-e', type=str, default='prott5')
     parser.add_argument('-s1', type=int, default=5)
     parser.add_argument('-s2', type=int, default=44)
@@ -154,11 +148,15 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
     tokenizer, model = load_model(args.e, device)
 
+    # Load embed/dct database
+    search_db = np.load(args.d, allow_pickle=True)
+    search_fams = [arr[0] for arr in search_db]
+
     # Call query_search for every query sequence in a folder
     match, top, clan, total = 0, 0, 0, 0
     direc = 'Data/full_seqs'
     for fam in os.listdir(direc):
-        if fam not in os.listdir(args.d):
+        if fam not in search_fams:
             continue
 
         # Randomly sample one query from family
@@ -172,7 +170,7 @@ def main():
             continue
 
         # Search idct embeddings and analyze results
-        results = query_search(embed, args.d, 100, 'cityblock')
+        results = query_search(embed, search_db, 100, 'cityblock')
         m, t, c = search_results(f'{fam}/{query}', results)
         (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
         logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)
