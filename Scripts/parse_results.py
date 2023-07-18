@@ -31,6 +31,7 @@ def get_results(lines: list) -> dict:
     # Get results for each query
     results = {}
     time, time2, query, avg_time, count = '', '', '', 0, 0
+    count = 0
     for line in lines:
 
         # Skip line inbetween queries
@@ -45,6 +46,7 @@ def get_results(lines: list) -> dict:
         # Get time
         if time == '':
             time = line.strip('\n')
+            count += 1
 
             # Subtract time from previous query and add diff to avg_time
             if time2 != '':
@@ -187,7 +189,7 @@ def main():
     ============================================================================================="""
 
     # Open search_results.csv
-    with open('Data/dct_search.log', 'r', encoding='utf8') as file:
+    with open('Data/search_dct.log', 'r', encoding='utf8') as file:
         lines = file.readlines()
 
     # Get results for each query and count results

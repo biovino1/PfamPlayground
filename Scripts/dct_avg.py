@@ -156,8 +156,9 @@ def main():
             avg_dct = transform_embs(embeddings, args)
 
         # Store fam and its avg_dct in a numpy array
-        test = np.array([fam, avg_dct], dtype=object)
-        dcts.append(test)
+        fam_dct = np.array([fam, avg_dct], dtype=object)
+        dcts.append(fam_dct)
+
 
     np.save('Data/avg_dct.npy', dcts)
 

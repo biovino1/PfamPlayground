@@ -10,13 +10,31 @@ import logging
 import os
 import torch
 import numpy as np
+from Bio import SeqIO
 from utility import load_model, embed_seq
 
 logging.basicConfig(filename='Data/embed_pfam.log',
                      level=logging.INFO, format='%(asctime)s %(message)s')
 
 
-def embed_fam(path: str, tokenizer, model, device, encoder: str):
+def load_seqs(file: str) -> list:
+    """=============================================================================================
+    This function takes a fasta file and returns a list of sequences and their IDs.
+
+    :param file: fasta file
+    :return list: list of sequences
+    ============================================================================================="""
+
+    # Read each line and add to list
+    seqs = []
+    with open(file, 'r', encoding='utf8') as f:
+        for seq in SeqIO.parse(f, 'fasta'):
+            seqs.append((seq.id, str(seq.seq)))
+
+    return seqs
+
+
+def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
     """=============================================================================================
     This function accepts a directory that contains fasta files of protein sequences and embeds
     each sequence using the provided tokenizer and encoder. The embeddings are saved as numpy
@@ -30,32 +48,33 @@ def embed_fam(path: str, tokenizer, model, device, encoder: str):
     ============================================================================================="""
 
     # Get last directory in path
-    ref_dir = path.rsplit('/', maxsplit=1)[-1]
-    if not os.path.isdir(f'Data/{encoder}_embed/{ref_dir}'):
-        os.makedirs(f'Data/{encoder}_embed/{ref_dir}')
+    fam = path.rsplit('/', maxsplit=1)[-1]
+    direc = f'{args.d}/{args.e}_embed'
+    if not os.path.isdir(f'{direc}/{fam}'):
+        os.makedirs(f'{direc}/{fam}')
 
-    # Get fasta files in ref_dir
-    files = [f'{path}/{file}' for file in os.listdir(path) if file.endswith('.fa')]
+    # Get seqs from fasta file
+    seqs = load_seqs(f'{path}/seqs.fa')
 
-    # Open each fasta file
-    for file in files:
+    # For each sequence
+    embeds = []
+    for sid, seq in seqs:
 
-        # Check if embedding already exists
-        if os.path.exists(f'Data/{encoder}_embed/{ref_dir}/'
-                        f'{file.split("/")[-1].replace(".fa", ".txt")}'):
-            logging.info('Embedding for %s already exists. Skipping...', file)
+        # Check if embeddings already exists
+        if os.path.exists(f'{direc}/{fam}/embed.npy'):
+            logging.info('Embedding for %s already exists. Skipping...', fam)
             continue
 
-        # Get sequence, embed, and save as np binary
-        with open(file, 'r', encoding='utf8') as fa_file:
-            logging.info('Embedding %s...', file)
-            seq = ''.join([line.strip('\n') for line in fa_file.readlines()[1:]])
-            embed = embed_seq(seq, tokenizer, model, device, encoder)
-            filename = file.rsplit('/', maxsplit=1)[-1].replace('.fa', '.npy')
-            with open(f'Data/{encoder}_embed/{ref_dir}/{filename}', 'wb') as emb_f:
-                np.save(emb_f, embed)
+        # Get sequence, embed, and add to list
+        logging.info('Embedding %s...', f'{fam}/{seq[0]}')
+        embed = embed_seq(seq, tokenizer, model, device, args.e)
+        embeds.append(np.array([sid, embed], dtype=object))
 
-    logging.info('Finished embedding sequences in %s\n', ref_dir)
+    # Save embeds to file
+    with open(f'{direc}/{fam}/embed.npy', 'wb') as emb:
+        np.save(emb, embeds)
+
+    logging.info('Finished embedding sequences in %s\n', fam)
 
 
 def main():
@@ -65,6 +84,7 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('-d', type=str, default='Data')
     parser.add_argument('-e', type=str, default='prott5')
     args = parser.parse_args()
 
@@ -77,7 +97,7 @@ def main():
     for fam in families:
 
         logging.info('Embedding sequences in %s...', fam)
-        embed_fam(fam, tokenizer, model, device, args.e)
+        embed_fam(fam, tokenizer, model, device, args)
 
 
 if __name__ == '__main__':

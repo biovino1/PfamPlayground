@@ -39,32 +39,34 @@ def clean_fasta(seq: str, cons: bool, gaps: bool) -> str:
     return seq
 
 
-def write_fasta(family: str, line: str, gaps: bool, fam_dir: str):
+def write_fasta(family: str, seqs: list, gaps: bool, fam_dir: str):
     """=============================================================================================
-    This function accepts a line from the pfam database and writes it to a fasta file.
+    This function accepts a list of lines from the pfam database that contain sequences in the same
+    family and writes them to the same file.
 
     :param family: name of family that line is from
-    :param line: line from pfam database
+    :param list: list of lines from pfam database
     :param gaps: flag to indicate if gaps should be included in sequences
-    :param fam_dir: name of directory to store families
+    :param fam_dir: directory to store families
     ============================================================================================="""
 
-    # Consenus sequence written slightly differently than other sequences
-    if line.startswith('#=GC seq_cons'):
-        line = line.split()
-        seq = clean_fasta(line[2], True, gaps)
-        length = len(seq.replace('\n', ''))-seq.count('.')
-        with open(f'{fam_dir}/{family}/consensus.fa', 'w', encoding='utf8') as file:
-            file.write(f'>consensus\tlength {length}\n{seq}')
+    with open(f'{fam_dir}/{family}/seqs.fa', 'w', encoding='utf8') as file:
+        for line in seqs:
 
-    else:  # All other sequences
+            # Consenus sequence written slightly differently than other sequences
+            if line.startswith('#=GC seq_cons'):
+                line = line.split()
+                seq = clean_fasta(line[2], True, gaps)
+                length = len(seq.replace('\n', ''))-seq.count('.')
+                file.write(f'>consensus\tlength {length}\n{seq}')
 
-        # Isolate AC number and region
-        line = line.split()
-        seq_id, region = line[0].split('/')[0], line[0].split('/')[1]
-        seq = clean_fasta(line[1], False, gaps)
-        with open(f'{fam_dir}/{family}/{seq_id}.fa', 'w', encoding='utf8') as file:
-            file.write(f'>{seq_id}\t{region}\n{seq}')
+            else:  # All other sequences
+
+                # Isolate AC number and region
+                line = line.split()
+                seq_id, region = line[0].split('/')[0], line[0].split('/')[1]
+                seq = clean_fasta(line[1], False, gaps)
+                file.write(f'>{seq_id}\t{region}\n{seq}\n')
 
 
 def read_pfam(pfam: str, gaps: bool, fam_dir: str):
@@ -78,7 +80,7 @@ def read_pfam(pfam: str, gaps: bool, fam_dir: str):
     ============================================================================================="""
 
     with open(pfam, 'r', encoding='utf8', errors='replace') as file:
-        in_fam = False  # Flag to indicate if we are in a family
+        in_fam, seqs = False, []  # Flag to indicate if we are in a family and list to store seqs
         for line in file:
 
             # Read until you reach #=GF ID
@@ -94,12 +96,14 @@ def read_pfam(pfam: str, gaps: bool, fam_dir: str):
             elif in_fam:
                 if line.startswith('#'):  # Skip GR, GF, GS lines
                     if line.startswith('#=GC seq_cons'):  # Except for consensus seq
-                        write_fasta(family, line, gaps, fam_dir)
-                    else: continue
-                if line.startswith('//'):  # End of family
-                    in_fam = False
+                        seqs.append(line)
+                        continue
                     continue
-                write_fasta(family, line, gaps, fam_dir)  # Write sequence to file
+                if line.startswith('//'):  # End of family
+                    write_fasta(family, seqs, gaps, fam_dir)
+                    in_fam, seqs = False, []
+                    continue
+                seqs.append(line)
 
 
 def main():
