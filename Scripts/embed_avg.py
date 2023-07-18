@@ -20,10 +20,9 @@ def get_seqs(family: str) -> dict:
     ============================================================================================="""
 
     sequences = {}
-    for file in os.listdir(f'Data/families_gaps/{family}'):  # Open each fasta file
-        with open(f'Data/families_gaps/{family}/{file}', 'r', encoding='utf8') as file:
-            for record in SeqIO.parse(file, 'fasta'):
-                sequences[record.id] = record.seq  # Add sequence to dictionary
+    with open(f'Data/families_gaps/{family}/seqs.fa', 'r', encoding='utf8') as file:
+        for record in SeqIO.parse(file, 'fasta'):
+            sequences[record.id] = record.seq  # Add sequence to dictionary
 
     return sequences
 
@@ -66,10 +65,9 @@ def get_embed(direc: str, sequences: dict) -> dict:
 
     # Load embeddings from file
     embeddings = {}
-    for file in os.listdir(direc):
-        with open(f'{direc}/{file}', 'rb') as file:
-            seqname = file.name.split('/')[-1].split('.')[0]  # To match with sequences dict keys
-            embeddings[seqname] = np.load(file)
+    embed = np.load(f'{direc}/embed.npy', allow_pickle=True)
+    for sid, emb in embed:
+        embeddings[sid] = emb
 
     # Pad embeddings to match length of consensus sequence
     del embeddings['consensus']  # Remove consensus from embeddings

@@ -1,6 +1,5 @@
 """================================================================================================
-This embeds all of the sequences from Pfam using RostLab's ProtT5_XL_UniRef50 model. The embeddings
-are saved as numpy arrays.
+This script embeds all of the sequences from Pfam and saves them as numpy arrays.
 
 Ben Iovino  05/08/23   SearchEmb
 ================================================================================================"""
@@ -36,15 +35,15 @@ def load_seqs(file: str) -> list:
 
 def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
     """=============================================================================================
-    This function accepts a directory that contains fasta files of protein sequences and embeds
-    each sequence using the provided tokenizer and encoder. The embeddings are saved as numpy
-    arrays in a new directory.
+    This function accepts a directory that contains a fasta file of protein sequences and embeds
+    each sequence using the provided tokenizer and encoder. All of the family's embeddings are
+    saved as a single numpy array.
 
     :param path: directory containing fasta files
     :param tokenizer: tokenizer model
     :param model: encoder model
     :param device: gpu/cpu
-    :param encoder: name of encoder
+    :param args: directory to store embeddings and encoder type
     ============================================================================================="""
 
     # Get last directory in path
@@ -55,10 +54,8 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
 
     # Get seqs from fasta file
     seqs = load_seqs(f'{path}/seqs.fa')
-
-    # For each sequence
     embeds = []
-    for sid, seq in seqs:
+    for sid, seq in seqs:  # Embed each sequence individually
 
         # Check if embeddings already exists
         if os.path.exists(f'{direc}/{fam}/embed.npy'):
