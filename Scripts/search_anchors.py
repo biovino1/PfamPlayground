@@ -11,32 +11,33 @@ import logging
 import os
 import pickle
 from random import sample
+from Bio import SeqIO
 import numpy as np
 import torch
-from transformers import T5EncoderModel, T5Tokenizer
-from utility import prot_t5xl_embed, load_model
+from utility import embed_seq, load_model
 from scipy.spatial.distance import cityblock
 
 logging.basicConfig(filename='Data/search_anchors.log',
                      level=logging.INFO, format='%(message)s')
 
 
-def embed_query(sequence: str, tokenizer: T5Tokenizer, model: T5EncoderModel, device) -> np.ndarray:
+def embed_query(sequence: str, tokenizer, model, device, encoder: str) -> np.ndarray:
     """=============================================================================================
-    This function embeds a query sequence and saves it to file. query_anchors.py can also perform
-    this function when a fasta file is passed through, but this is more efficient when running
-    multiple queries so the models only have to load once.
+    This function loads a query sequence from file and embeds it using the provided tokenizer and
+    encoder.
 
     :param sequence: path to fasta file containing query sequence
-    :param tokenizer: T5 tokenizer
-    :param model: ProtT5-XL model
+    :param tokenizer: tokenizer
+    :param model: encoder model
     :param device: cpu or gpu
+    :return np.ndarray: embedding of query sequence
     ============================================================================================="""
 
-    # Embed query in this script to save time from loading model every time
-    with open(sequence, 'r', encoding='utf8') as fa_file:
-        seq = ''.join([line.strip('\n') for line in fa_file.readlines()[1:]])
-    embed = prot_t5xl_embed(seq, tokenizer, model, device)
+    seq = ()
+    with open(sequence, 'r', encoding='utf8') as f:
+        for seq in SeqIO.parse(f, 'fasta'):
+            seq = (seq.id, str(seq.seq))
+    embed = embed_seq(seq, tokenizer, model, device, encoder)
 
     return embed
 
@@ -162,7 +163,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='Data/anchors')
-    parser.add_argument('e', type=str, default='prott5')
+    parser.add_argument('-e', type=str, default='prott5')
     args = parser.parse_args()
 
     # Load tokenizer and encoder
@@ -174,6 +175,7 @@ def main():
     direc = 'Data/full_seqs'
     for fam in os.listdir(direc):
 
+        # Only search families with anchors
         if fam not in os.listdir(args.d):
             continue
 
@@ -181,10 +183,10 @@ def main():
         queries = os.listdir(f'{direc}/{fam}')
         query = sample(queries, 1)[0]
         seq_file = f'{direc}/{fam}/{query}'
-        embed = embed_query(seq_file, tokenizer, model, device)
+        embed = embed_query(seq_file, tokenizer, model, device, args.e)
 
         # Search anchors and analyze results
-        results = query_search(embed, args.d, 10, 'cosine')
+        results = query_search(embed, args.d, 100, 'cosine')
         m, t, c = search_results(f'{fam}/{query}', results)
         (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
         logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)

@@ -70,7 +70,6 @@ def get_embed(direc: str, sequences: dict) -> dict:
         embeddings[sid] = emb
 
     # Pad embeddings to match length of consensus sequence
-    del embeddings['consensus']  # Remove consensus from embeddings
     for seqid, embed in embeddings.items():
         sequence = sequences[seqid]
 
@@ -117,7 +116,6 @@ def average_embed(family: str, positions: dict, embeddings: dict):
     # Save to file
     if not os.path.exists(f'Data/avg_embed/{family}'):
         os.makedirs(f'Data/avg_embed/{family}')
-        os.makedirs(f'Data/avg_dct/{family}')
     with open(f'Data/avg_embed/{family}/avg_embed.npy', 'wb') as emb_f:
         np.save(emb_f, avg_embed, allow_pickle=True)
 

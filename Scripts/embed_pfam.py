@@ -40,8 +40,7 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
     saved as a single numpy array.
 
     :param path: directory containing fasta files
-    :param tokenizer: tokenizer model
-    :param model: encoder model
+    :param model: dict containing tokenizer and encoder
     :param device: gpu/cpu
     :param args: directory to store embeddings and encoder type
     ============================================================================================="""
@@ -55,7 +54,11 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
     # Get seqs from fasta file
     seqs = load_seqs(f'{path}/seqs.fa')
     embeds = []
-    for sid, seq in seqs:  # Embed each sequence individually
+    for seq in seqs:  # Embed each sequence individually
+
+        # Skip consensus sequence
+        if seq[0] == 'consensus':
+            continue
 
         # Check if embeddings already exists
         if os.path.exists(f'{direc}/{fam}/embed.npy'):
@@ -65,7 +68,7 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
         # Get sequence, embed, and add to list
         logging.info('Embedding %s...', f'{fam}/{seq[0]}')
         embed = embed_seq(seq, tokenizer, model, device, args.e)
-        embeds.append(np.array([sid, embed], dtype=object))
+        embeds.append(np.array([seq[0], embed], dtype=object))
 
     # Save embeds to file
     with open(f'{direc}/{fam}/embed.npy', 'wb') as emb:

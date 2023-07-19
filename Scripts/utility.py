@@ -4,10 +4,10 @@ This script contains utility functions to be imported into other scripts.
 Ben Iovino  06/01/23   SearchEmb
 ================================================================================================"""
 
-import os
 import re
+import esm
 import torch
-from transformers import T5EncoderModel, T5Tokenizer, AutoTokenizer, EsmModel
+from transformers import T5EncoderModel, T5Tokenizer
 
 
 def clean_seq(seq: str) -> str:
@@ -26,14 +26,14 @@ def clean_seq(seq: str) -> str:
     return seq
 
 
-def embed_seq(seq: str, tokenizer, encoder, device, encoder_name: str) -> list:
+def embed_seq(seq: str, tokenizer, model, device: str, encoder_name: str) -> list:
     """=============================================================================================
     This function accepts a protein sequence and returns a list of vectors, each vector representing
     a single amino acid using the provided tokenizer and encoder.
 
     :param seq: protein sequence
-    :param tokenizer: tokenizer model
-    :param encoder: encoder model
+    :param tokenizer: tokenizer
+    :param model: encoder model
     :param device: gpu/cpu
     :param encoder_name: name of encoder
     return seq_emb: list of vectors
@@ -41,36 +41,35 @@ def embed_seq(seq: str, tokenizer, encoder, device, encoder_name: str) -> list:
 
     # ProtT5_XL_UniRef50
     if encoder_name == 'prott5':
-        embed = prot_t5xl_embed(seq, tokenizer, encoder, device)
+        embed = prot_t5xl_embed(seq, tokenizer, model, device)
 
     # ESM-2_t36_3B
     elif encoder_name == 'esm2':
-        embed = esm2_embed(seq, tokenizer, encoder, device)
+        embed = esm2_embed(seq, tokenizer, model, device)
 
     return embed
 
 
-def prot_t5xl_embed(seq: str, tokenizer, encoder, device) -> list:
+def prot_t5xl_embed(seq: str, tokenizer, model, device) -> list:
     """=============================================================================================
     This function accepts a protein sequence and returns a list of vectors, each vector representing
     a single amino acid using RostLab's ProtT5_XL_UniRef50 model.
 
     :param seq: protein sequence
-    :param tokenizer: tokenizer model
-    :param encoder: encoder model
+    :param model: dict containing tokenizer and encoder
     :param device: gpu/cpu
     return: list of vectors
     ============================================================================================="""
 
     # Tokenize, encode, and load sequence
-    seq = clean_seq(seq)
+    seq = clean_seq(seq[1])
     ids = tokenizer.batch_encode_plus(seq, add_special_tokens=True, padding=True)
     input_ids = torch.tensor(ids['input_ids']).to(device)  # pylint: disable=E1101
     attention_mask = torch.tensor(ids['attention_mask']).to(device)  # pylint: disable=E1101
 
     # Extract sequence features
     with torch.no_grad():
-        embedding = encoder(input_ids=input_ids,attention_mask=attention_mask)
+        embedding = model(input_ids=input_ids,attention_mask=attention_mask)
     embedding = embedding.last_hidden_state.cpu().numpy()  # pylint: disable=E1101
 
     # Remove padding and special tokens
@@ -83,29 +82,27 @@ def prot_t5xl_embed(seq: str, tokenizer, encoder, device) -> list:
     return features[0]
 
 
-def esm2_embed(seq: str, tokenizer, encoder, device):
+def esm2_embed(seq: str, tokenizer, model, device: str):
     """=============================================================================================
     This function accepts a protein sequence and returns a list of vectors, each vector representing
     a single amino acid using Facebook's ESM-2 model.
 
     :param seq: protein sequence
-    :param: tokenizer: tokenizer model
-    :param encoder: encoder model
+    :param tokenizer: tokenizer
+    :param model: encoder model
+    :param device: gpu/cpu
     return: list of vectors
     ============================================================================================="""
 
-    # Tokenize, encode, and load sequence
-    seq = clean_seq(seq)
-    inputs = tokenizer(seq, return_tensors="pt")
-    input_ids = torch.tensor(inputs['input_ids']).to(device)  # pylint: disable=E1101
-    attention_mask = torch.tensor(inputs['attention_mask']).to(device)  # pylint: disable=E1101
+    # Embed sequences
+    batch_labels, batch_strs, batch_tokens = tokenizer([seq])  #pylint: disable=W0612
+    batch_tokens = batch_tokens.to(device)  # send tokens to gpu
 
-    # Extract sequence features
     with torch.no_grad():
-        outputs = encoder(input_ids=input_ids,attention_mask=attention_mask)
-    last_hidden_states = outputs.last_hidden_state.cpu().numpy()  # pylint: disable=E1101
+        results = model(batch_tokens, repr_layers=[35])
+    embed = results["representations"][35].cpu().numpy()
 
-    return last_hidden_states[0][1:-1]  # First and last tokens are BOS and EOS tokens
+    return embed[0]
 
 
 def load_model(encoder: str, device: str) -> tuple:
@@ -119,32 +116,15 @@ def load_model(encoder: str, device: str) -> tuple:
 
     # ProtT5_XL_UniRef50
     if encoder == 'prott5':
-        if os.path.exists('Data/t5_tok.pt'):
-            tokenizer = torch.load('Data/t5_tok.pt')
-        else:
-            tokenizer = T5Tokenizer.from_pretrained("Rostlab/prot_t5_xl_uniref50",
-                                                     do_lower_case=False)
-            torch.save(tokenizer, 'Data/t5_tok.pt')
-        if os.path.exists('Data/prot_t5_xl.pt'):
-            model = torch.load('Data/prot_t5_xl.pt')
-        else:
-            model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
-            torch.save(model, 'Data/prot_t5_xl.pt')
+        tokenizer = T5Tokenizer.from_pretrained('Rostlab/prot_t5_xl_uniref50', do_lower_case=False)
+        model = T5EncoderModel.from_pretrained("Rostlab/prot_t5_xl_uniref50")
+        model.to(device)  # Loads to GPU if available
 
     # ESM-2_t36_3B
     if encoder == 'esm2':
-        if os.path.exists('Data/auto_tok.pt'):
-            tokenizer = torch.load('Data/auto_tok.pt')
-        else:
-            tokenizer = AutoTokenizer.from_pretrained("facebook/esm2_t36_3B_UR50D")
-            torch.save(tokenizer, 'Data/auto_tok.pt')
-        if os.path.exists('Data/esm2_t36_3B.pt'):
-            model = torch.load('Data/esm2_t36_3B.pt')
-        else:
-            model = EsmModel.from_pretrained("facebook/esm2_t36_3B_UR50D")
-            torch.save(model, 'Data/esm2_t36_3B.pt')
-
-    # Load model to gpu if available
-    model.to(device)
+        model, alphabet = esm.pretrained.esm2_t36_3B_UR50D()
+        tokenizer = alphabet.get_batch_converter()
+        model.eval()  # disables dropout for deterministic results
+        model.to(device)
 
     return tokenizer, model

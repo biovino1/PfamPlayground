@@ -131,7 +131,7 @@ def main():
                      level=logging.INFO, format='%(message)s')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='Data/prott5_embed', help='direc of embeds to avg')
+    parser.add_argument('-d', type=str, default='Data/esm2_embed', help='direc of embeds to avg')
     parser.add_argument('-s1', type=int, default=5)
     parser.add_argument('-s2', type=int, default=44)
     parser.add_argument('-t', type=str, default='avg', help ='avg, cons, or all')
@@ -159,7 +159,7 @@ def main():
         fam_dct = np.array([fam, avg_dct], dtype=object)
         dcts.append(fam_dct)
 
-
+    # Save all dcts to file
     np.save('Data/avg_dct.npy', dcts)
 
 
