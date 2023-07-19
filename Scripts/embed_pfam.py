@@ -56,18 +56,18 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
     embeds = []
     for seq in seqs:  # Embed each sequence individually
 
-        # Skip consensus sequence
-        if seq[0] == 'consensus':
-            continue
-
         # Check if embeddings already exists
         if os.path.exists(f'{direc}/{fam}/embed.npy'):
             logging.info('Embedding for %s already exists. Skipping...', fam)
             continue
 
+        # Skip consensus sequence
+        if seq[0] == 'consensus':
+            continue
+
         # Get sequence, embed, and add to list
         logging.info('Embedding %s...', f'{fam}/{seq[0]}')
-        embed = embed_seq(seq, tokenizer, model, device, args.e)
+        embed = embed_seq(seq, tokenizer, model, device, args)
         embeds.append(np.array([seq[0], embed], dtype=object))
 
     # Save embeds to file
@@ -85,7 +85,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='Data')
-    parser.add_argument('-e', type=str, default='prott5')
+    parser.add_argument('-e', type=str, default='esm2')
+    parser.add_argument('-l', type=int, default=17)
     args = parser.parse_args()
 
     # Load tokenizer and encoder

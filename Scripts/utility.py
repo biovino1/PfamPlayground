@@ -4,6 +4,7 @@ This script contains utility functions to be imported into other scripts.
 Ben Iovino  06/01/23   SearchEmb
 ================================================================================================"""
 
+import argparse
 import re
 import esm
 import torch
@@ -26,7 +27,7 @@ def clean_seq(seq: str) -> str:
     return seq
 
 
-def embed_seq(seq: str, tokenizer, model, device: str, encoder_name: str) -> list:
+def embed_seq(seq: str, tokenizer, model, device: str, args: argparse.Namespace) -> list:
     """=============================================================================================
     This function accepts a protein sequence and returns a list of vectors, each vector representing
     a single amino acid using the provided tokenizer and encoder.
@@ -35,17 +36,17 @@ def embed_seq(seq: str, tokenizer, model, device: str, encoder_name: str) -> lis
     :param tokenizer: tokenizer
     :param model: encoder model
     :param device: gpu/cpu
-    :param encoder_name: name of encoder
-    return seq_emb: list of vectors
+    :param args: encoder type and layer to extract features from (if using esm2)
+    return embed: list of vectors
     ============================================================================================="""
 
     # ProtT5_XL_UniRef50
-    if encoder_name == 'prott5':
+    if args.e == 'prott5':
         embed = prot_t5xl_embed(seq, tokenizer, model, device)
 
     # ESM-2_t36_3B
-    elif encoder_name == 'esm2':
-        embed = esm2_embed(seq, tokenizer, model, device)
+    elif args.e == 'esm2':
+        embed = esm2_embed(seq, tokenizer, model, device, args.l)
 
     return embed
 
@@ -82,7 +83,7 @@ def prot_t5xl_embed(seq: str, tokenizer, model, device) -> list:
     return features[0]
 
 
-def esm2_embed(seq: str, tokenizer, model, device: str):
+def esm2_embed(seq: str, tokenizer, model, device: str, layer: int) -> list:
     """=============================================================================================
     This function accepts a protein sequence and returns a list of vectors, each vector representing
     a single amino acid using Facebook's ESM-2 model.
@@ -99,8 +100,8 @@ def esm2_embed(seq: str, tokenizer, model, device: str):
     batch_tokens = batch_tokens.to(device)  # send tokens to gpu
 
     with torch.no_grad():
-        results = model(batch_tokens, repr_layers=[35])
-    embed = results["representations"][35].cpu().numpy()
+        results = model(batch_tokens, repr_layers=[layer])
+    embed = results["representations"][layer].cpu().numpy()
 
     return embed[0]
 

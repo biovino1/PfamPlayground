@@ -22,7 +22,7 @@ logging.basicConfig(filename='Data/search_dct.log',
                      level=logging.INFO, format='%(message)s')
 
 
-def embed_query(sequence: str, tokenizer, model, device, encoder: str) -> np.ndarray:
+def embed_query(sequence: str, tokenizer, model, device: str, args: argparse.Namespace) -> np.ndarray:
     """=============================================================================================
     This function loads a query sequence from file and embeds it using the provided tokenizer and
     encoder.
@@ -31,6 +31,7 @@ def embed_query(sequence: str, tokenizer, model, device, encoder: str) -> np.nda
     :param tokenizer: tokenizer
     :param model: encoder model
     :param device: cpu or gpu
+    :param args: encoder type and layer to extract features from (if using esm2)
     :return np.ndarray: embedding of query sequence
     ============================================================================================="""
 
@@ -38,7 +39,7 @@ def embed_query(sequence: str, tokenizer, model, device, encoder: str) -> np.nda
     with open(sequence, 'r', encoding='utf8') as f:
         for seq in SeqIO.parse(f, 'fasta'):
             seq = (seq.id, str(seq.seq))
-    embed = embed_seq(seq, tokenizer, model, device, encoder)
+    embed = embed_seq(seq, tokenizer, model, device, args)
 
     return embed
 
@@ -142,6 +143,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='Data/avg_dct.npy')
     parser.add_argument('-e', type=str, default='esm2')
+    parser.add_argument('-l', type=int, default=17)
     parser.add_argument('-s1', type=int, default=5)
     parser.add_argument('-s2', type=int, default=44)
     args = parser.parse_args()
@@ -165,7 +167,7 @@ def main():
         queries = os.listdir(f'{direc}/{fam}')
         query = sample(queries, 1)[0]
         seq_file = f'{direc}/{fam}/{query}'
-        embed = embed_query(seq_file, tokenizer, model, device, args.e)
+        embed = embed_query(seq_file, tokenizer, model, device, args)
         try:
             embed = quant2D(embed, args.s1, args.s2)  # nxn 1D array
         except ValueError:  # Some sequences are too short to transform
