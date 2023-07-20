@@ -27,12 +27,12 @@ def clean_seq(seq: str) -> str:
     return seq
 
 
-def embed_seq(seq: str, tokenizer, model, device: str, args: argparse.Namespace) -> list:
+def embed_seq(seq: tuple, tokenizer, model, device: str, args: argparse.Namespace) -> list:
     """=============================================================================================
     This function accepts a protein sequence and returns a list of vectors, each vector representing
     a single amino acid using the provided tokenizer and encoder.
 
-    :param seq: protein sequence
+    :param seq: protein ID and sequence
     :param tokenizer: tokenizer
     :param model: encoder model
     :param device: gpu/cpu
@@ -51,12 +51,12 @@ def embed_seq(seq: str, tokenizer, model, device: str, args: argparse.Namespace)
     return embed
 
 
-def prot_t5xl_embed(seq: str, tokenizer, model, device) -> list:
+def prot_t5xl_embed(seq: tuple, tokenizer, model, device) -> list:
     """=============================================================================================
     This function accepts a protein sequence and returns a list of vectors, each vector representing
     a single amino acid using RostLab's ProtT5_XL_UniRef50 model.
 
-    :param seq: protein sequence
+    :param seq: protein ID and sequence
     :param model: dict containing tokenizer and encoder
     :param device: gpu/cpu
     return: list of vectors
@@ -83,12 +83,12 @@ def prot_t5xl_embed(seq: str, tokenizer, model, device) -> list:
     return features[0]
 
 
-def esm2_embed(seq: str, tokenizer, model, device: str, layer: int) -> list:
+def esm2_embed(seq: tuple, tokenizer, model, device: str, layer: int) -> list:
     """=============================================================================================
     This function accepts a protein sequence and returns a list of vectors, each vector representing
     a single amino acid using Facebook's ESM-2 model.
 
-    :param seq: protein sequence
+    :param seq: protein ID and sequence
     :param tokenizer: tokenizer
     :param model: encoder model
     :param device: gpu/cpu
@@ -96,6 +96,7 @@ def esm2_embed(seq: str, tokenizer, model, device: str, layer: int) -> list:
     ============================================================================================="""
 
     # Embed sequences
+    seq = (seq[0], seq[1].upper())  # tok does not convert to uppercase
     batch_labels, batch_strs, batch_tokens = tokenizer([seq])  #pylint: disable=W0612
     batch_tokens = batch_tokens.to(device)  # send tokens to gpu
 

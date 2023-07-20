@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from embed_avg import get_seqs, cons_pos, get_embed
 
-logging.basicConfig(filename='Data/get_anchors.log',
+logging.basicConfig(filename='data/logs/get_anchors.log',
                      level=logging.INFO, format='%(message)s')
 
 
@@ -23,9 +23,9 @@ def embed_pos(positions: dict, embeddings: dict) -> list:
     a dictionary of embeddings. It returns a list of vectors that correspond to the consensus
     positions.
 
-    :param sequences: dict where seq id is key with sequence as value
     :param positions: dict where seq id is key with list of positions as value
-    :return dict: position is key with list of embeddings as value
+    :param embeddings: dict where seq id is key with list of embeddings as value
+    :return list: list of vectors corresponding to consensus positions
     ============================================================================================="""
 
     # Create a dict of lists where each list contains the embeddings for a position in the consensus
@@ -59,7 +59,7 @@ def get_cos_sim(family: str, embeddings: dict) -> list:
     ============================================================================================="""
 
     # Get average embedding
-    avg_embed = np.load(f'Data/avg_embed/{family}/avg_embed.npy')
+    avg_embed = np.load(f'data/avg_embed/{family}/avg_embed.npy')
 
     # Get cosine similarity between average embedding and each position
     cos_sim = {}
@@ -241,7 +241,7 @@ def get_anchors(family: str, regions: dict):
     ============================================================================================="""
 
     # Get average embedding
-    avg_embed = np.load(f'Data/avg_embed/{family}/avg_embed.npy')
+    avg_embed = np.load(f'data/avg_embed/{family}/avg_embed.npy')
 
     # For each set of regions, find anchor residues
     anchors_pos = []
@@ -260,9 +260,9 @@ def get_anchors(family: str, regions: dict):
         anchor_embed.append(avg_embed[pos])
 
     # Save anchor embeddings to file
-    if not os.path.exists(f'Data/anchors/{family}'):
-        os.makedirs(f'Data/anchors/{family}')
-    with open(f'Data/anchors/{family}/anchor_embed.npy', 'wb') as emb_f:
+    if not os.path.exists(f'data/anchors/{family}'):
+        os.makedirs(f'data/anchors/{family}')
+    with open(f'data/anchors/{family}/anchor_embed.npy', 'wb') as emb_f:
         np.save(emb_f, anchor_embed, allow_pickle=True)
 
 
@@ -277,11 +277,11 @@ def main():
     parser.add_argument('-f', type=int, help='Closeness of regions to filter out', default=3)
     args = parser.parse_args()
 
-    direc = 'Data/prott5_embed'
+    direc = 'data/prott5_embed'
     for family in os.listdir(direc):
 
         # Check if anchors already exist
-        if os.path.exists(f'Data/anchors/{family}/anchor_embed.txt'):
+        if os.path.exists(f'data/anchors/{family}/anchor_embed.txt'):
             continue
         logging.info('Getting anchor for %s', family)
 

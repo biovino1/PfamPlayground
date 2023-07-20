@@ -18,7 +18,6 @@ def transform_avgs(positions: dict, embeddings: dict, args: argparse.Namespace) 
     a dictionary of embeddings. It averages the embeddings for each position and returns the iDCT
     vector of the whole embedding as a numpy array.
 
-    :param sequences: dict where seq id is key with sequence as value
     :param positions: dict where seq id is key with list of positions as value
     :param embeddings: dict where seq is key with list of embeddings as value
     :param args: argparse.Namespace object with dct dimensions
@@ -122,16 +121,16 @@ def transform_embs(embeddings: dict, args: argparse.Namespace) -> np.ndarray:
 def main():
     """=============================================================================================
     Main goes through each Pfam family and calls get_seqs() to get protein sequences, cons_pos() to
-    get the consensus sequence positions, get_embed() to get the embeddings for each sequence, and
-    either transform_cons to get DCT transform of embeddings including only the consensus positions
-    or transform_embs to get DCT transform of entire embeddings and save them to file.
+    get the consensus sequence positions, get_embed() to get the embeddings for each sequence, one
+    of the transform functions to transform the embeddings. All of the transformed embeddings are
+    saved to a numpy array.
     ============================================================================================="""
 
-    logging.basicConfig(filename='Data/dct_avg.log',
+    logging.basicConfig(filename='data/logs/dct_avg.log',
                      level=logging.INFO, format='%(message)s')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='Data/esm2_embed', help='direc of embeds to avg')
+    parser.add_argument('-d', type=str, default='data/esm2_embed', help='direc of embeds to avg')
     parser.add_argument('-s1', type=int, default=5)
     parser.add_argument('-s2', type=int, default=44)
     parser.add_argument('-t', type=str, default='avg', help ='avg, cons, or all')
@@ -160,7 +159,7 @@ def main():
         dcts.append(fam_dct)
 
     # Save all dcts to file
-    np.save('Data/avg_dct.npy', dcts)
+    np.save('data/avg_dct.npy', dcts)
 
 
 if __name__ == '__main__':

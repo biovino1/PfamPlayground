@@ -20,7 +20,7 @@ def get_seqs(family: str) -> dict:
     ============================================================================================="""
 
     sequences = {}
-    with open(f'Data/families_gaps/{family}/seqs.fa', 'r', encoding='utf8') as file:
+    with open(f'data/families_gaps/{family}/seqs.fa', 'r', encoding='utf8') as file:
         for record in SeqIO.parse(file, 'fasta'):
             sequences[record.id] = record.seq  # Add sequence to dictionary
 
@@ -54,12 +54,11 @@ def cons_pos(sequences: dict) -> dict:
 
 def get_embed(direc: str, sequences: dict) -> dict:
     """=============================================================================================
-    This function accepts a directory of fasta seqs and a dictionary of sequences located in that
-    directory. It returns a dictionary of embeddings corresponding to the consensus positions.
+    This function accepts a directory of fasta seqs and a dictionary of sequences that arelocated in
+    that directory. It returns a dictionary of embeddings corresponding to the consensus positions.
 
     :param family: name of Pfam family
     :param sequences: dict where seq id is key with sequence as value
-    :param positions: dict where seq id is key with list of positions as value
     :return dict: seq id is key with list of embeddings as value
     ============================================================================================="""
 
@@ -114,9 +113,9 @@ def average_embed(family: str, positions: dict, embeddings: dict):
         avg_embed.append(np.mean(embed, axis=0))  # Find mean for each position (float)
 
     # Save to file
-    if not os.path.exists(f'Data/avg_embed/{family}'):
-        os.makedirs(f'Data/avg_embed/{family}')
-    with open(f'Data/avg_embed/{family}/avg_embed.npy', 'wb') as emb_f:
+    if not os.path.exists(f'data/avg_embed/{family}'):
+        os.makedirs(f'data/avg_embed/{family}')
+    with open(f'data/avg_embed/{family}/avg_embed.npy', 'wb') as emb_f:
         np.save(emb_f, avg_embed, allow_pickle=True)
 
 
@@ -128,13 +127,13 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='Data/prott5_embed', help='direc of embeds to avg')
+    parser.add_argument('-d', type=str, default='data/prott5_embed', help='direc of embeds to avg')
     args = parser.parse_args()
 
     for family in os.listdir(args.d):
 
         # Check if average embedding already exists
-        if os.path.exists(f'Data/avg_embed/{family}/avg_embed.npy'):
+        if os.path.exists(f'data/avg_embed/{family}/avg_embed.npy'):
             continue
 
         # Get sequences and their consensus positions

@@ -86,20 +86,20 @@ def main():
     ============================================================================================="""
 
     # Read Pfam-A.seed if it exists
-    if os.path.exists('Data/Pfam-A.fasta'):
-        pfam = 'Data/Pfam-A.fasta'
+    if os.path.exists('data/Pfam-A.fasta'):
+        pfam = 'data/Pfam-A.fasta'
     else:
         print('Pfam-A.seed not found. Downloading from Pfam...')
-        if not os.path.exists('Data'):
-            os.mkdir('Data')
-        os.system('wget -P Data ' \
+        if not os.path.exists('data'):
+            os.mkdir('data')
+        os.system('wget -P data ' \
             'https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.fasta.gz')
-        os.system('gunzip Data/Pfam-A.fasta.gz')
-        pfam = 'Data/Pfam-A.fasta'
+        os.system('gunzip data/Pfam-A.fasta.gz')
+        pfam = 'data/Pfam-A.fasta'
 
     # Create directories for families
-    if not os.path.exists('Data/full_seqs'):
-        os.mkdir('Data/full_seqs')
+    if not os.path.exists('data/full_seqs'):
+        os.mkdir('data/full_seqs')
 
     # Parse all fasta seqs
     read_pfam(pfam)

@@ -114,29 +114,29 @@ def main():
     ============================================================================================="""
 
     # Read Pfam-A.seed if it exists
-    if os.path.exists('Data/Pfam-A.seed'):
-        pfam = 'Data/Pfam-A.seed'
+    if os.path.exists('data/Pfam-A.seed'):
+        pfam = 'data/Pfam-A.seed'
     else:
         print('Pfam-A.seed not found. Downloading from Pfam...')
-        if not os.path.exists('Data'):
-            os.mkdir('Data')
-        os.system('wget -P Data ' \
+        if not os.path.exists('data'):
+            os.mkdir('data')
+        os.system('wget -P data ' \
              'https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.seed.gz')
-        os.system('gunzip Data/Pfam-A.seed.gz')
-        pfam = 'Data/Pfam-A.seed'
+        os.system('gunzip data/Pfam-A.seed.gz')
+        pfam = 'data/Pfam-A.seed'
 
     # Create directories for families
-    if not os.path.exists('Data/families_gaps'):
-        os.mkdir('Data/families_gaps')
-    if not os.path.exists('Data/families_nogaps'):
-        os.mkdir('Data/families_nogaps')
+    if not os.path.exists('data/families_gaps'):
+        os.mkdir('data/families_gaps')
+    if not os.path.exists('data/families_nogaps'):
+        os.mkdir('data/families_nogaps')
 
     # Parse once with gaps and once without
     for gaps in [True, False]:
         if gaps is True:
-            fam_dir = 'Data/families_gaps'
+            fam_dir = 'data/families_gaps'
         else:
-            fam_dir = 'Data/families_nogaps'
+            fam_dir = 'data/families_nogaps'
         read_pfam(pfam, gaps, fam_dir)
 
 

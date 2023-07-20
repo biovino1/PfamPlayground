@@ -12,7 +12,7 @@ import numpy as np
 from Bio import SeqIO
 from utility import load_model, embed_seq
 
-logging.basicConfig(filename='Data/embed_pfam.log',
+logging.basicConfig(filename='data/logs/embed_pfam.log',
                      level=logging.INFO, format='%(asctime)s %(message)s')
 
 
@@ -40,7 +40,8 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
     saved as a single numpy array.
 
     :param path: directory containing fasta files
-    :param model: dict containing tokenizer and encoder
+    :param tokenizer: tokenizer
+    :param model: encoder model
     :param device: gpu/cpu
     :param args: directory to store embeddings and encoder type
     ============================================================================================="""
@@ -56,19 +57,18 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
     embeds = []
     for seq in seqs:  # Embed each sequence individually
 
-        # Check if embeddings already exists
+        # Check if embeddings already exist
         if os.path.exists(f'{direc}/{fam}/embed.npy'):
             logging.info('Embedding for %s already exists. Skipping...', fam)
-            continue
+            break
 
         # Skip consensus sequence
         if seq[0] == 'consensus':
             continue
 
-        # Get sequence, embed, and add to list
-        logging.info('Embedding %s...', f'{fam}/{seq[0]}')
+        # Embed and save sequence id and embed in array
         embed = embed_seq(seq, tokenizer, model, device, args)
-        embeds.append(np.array([seq[0], embed], dtype=object))
+        embeds.append(np.array([seq[0], embed], dtype=object))  # [(id, embed)]
 
     # Save embeds to file
     with open(f'{direc}/{fam}/embed.npy', 'wb') as emb:
@@ -84,7 +84,7 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='Data')
+    parser.add_argument('-d', type=str, default='data')
     parser.add_argument('-e', type=str, default='esm2')
     parser.add_argument('-l', type=int, default=17)
     args = parser.parse_args()
@@ -94,9 +94,8 @@ def main():
     tokenizer, model = load_model(args.e, device)
 
     # Get names of all family folders and embed all seqs in each one
-    families = [f'Data/families_nogaps/{fam}' for fam in os.listdir('Data/families_nogaps')]
+    families = [f'data/families_nogaps/{fam}' for fam in os.listdir('data/families_nogaps')]
     for fam in families:
-
         logging.info('Embedding sequences in %s...', fam)
         embed_fam(fam, tokenizer, model, device, args)
 

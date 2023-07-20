@@ -63,11 +63,11 @@ def main():
     discrete cosine transform.
     ============================================================================================="""
 
-    logging.basicConfig(filename='Data/dct_embed.log',
+    logging.basicConfig(filename='data/logs/dct_embed.log',
                      level=logging.INFO, format='%(message)s')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='Data/prott5_embed')
+    parser.add_argument('-d', type=str, default='data/prott5_embed')
     parser.add_argument('-s1', type=int, default=5)
     parser.add_argument('-s2', type=int, default=44)
     args = parser.parse_args()

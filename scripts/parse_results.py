@@ -15,7 +15,7 @@ from dct_embed import quant2D
 from utility import prot_t5xl_embed, load_model
 from scipy.spatial.distance import cityblock
 
-logging.basicConfig(filename='Data/parse_results.log',
+logging.basicConfig(filename='data/logs/parse_results.log',
                      level=logging.INFO, format='%(message)s')
 
 
@@ -95,7 +95,7 @@ def count_results(results: dict) -> list:
             continue
 
         # Read clans dict and see if query is in same clan as top result
-        with open('Data/clans.pkl', 'rb') as file:
+        with open('data/clans.pkl', 'rb') as file:
             clans = pickle.load(file)
         for fams in clans.values():
             if query_fam in fams and list(se_res.keys())[0].split('/')[0] in fams:
@@ -110,7 +110,7 @@ def count_results(results: dict) -> list:
 
         # Read length of fasta file
         missed_queries.append((query, sim))
-        with open(f'Data/full_seqs/{query}', 'r', encoding='utf8') as file:
+        with open(f'data/full_seqs/{query}', 'r', encoding='utf8') as file:
             lines = file.readlines()
         length = len(''.join([line.strip('\n') for line in lines[1:]]))
         missedq_length += length
@@ -157,15 +157,15 @@ def mqs(queries: list):
         avg_sim = query[1]
 
         # Seqs in query fam from Pfam-A.seed
-        fam_seqs = os.listdir(f'Data/families_nogaps/{fam}')
+        fam_seqs = os.listdir(f'data/families_nogaps/{fam}')
         avg_len += len(fam_seqs)
         num_seqs.append(len(fam_seqs))
 
         # Get avg dct of family
-        avg_dct = np.load(f'Data/avg_dct/{fam}/avg_dct.npy')
+        avg_dct = np.load(f'data/avg_dct/{fam}/avg_dct.npy')
 
         # Embed query seq
-        with open(f'Data/full_seqs/{query[0]}', 'r', encoding='utf8') as file:
+        with open(f'data/full_seqs/{query[0]}', 'r', encoding='utf8') as file:
             lines = file.readlines()
         seq = ''.join([line.strip('\n') for line in lines[1:]])
 
@@ -189,7 +189,7 @@ def main():
     ============================================================================================="""
 
     # Open search_results.csv
-    with open('Data/search_dct.log', 'r', encoding='utf8') as file:
+    with open('data/search_dct.log', 'r', encoding='utf8') as file:
         lines = file.readlines()
 
     # Get results for each query and count results
