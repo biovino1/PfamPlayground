@@ -14,7 +14,7 @@ from random import sample
 from Bio import SeqIO
 import numpy as np
 import torch
-from utility import embed_seq, load_model
+from util import load_model, Embedding
 from scipy.spatial.distance import cityblock
 
 log_filename = 'data/logs/search_anchors.log'  #pylint: disable=C0103
@@ -39,9 +39,12 @@ def embed_query(sequence: str, tokenizer, model, device, args: argparse.Namespac
     with open(sequence, 'r', encoding='utf8') as f:
         for seq in SeqIO.parse(f, 'fasta'):
             seq = (seq.id, str(seq.seq))
-    embed = embed_seq(seq, tokenizer, model, device, args)
 
-    return embed
+    # Initialize Embedding object and embed sequence
+    embed = Embedding(seq[0], seq[1], None)
+    embed.embed_seq(tokenizer, model, device, args)
+
+    return embed.embed[1]
 
 
 def query_sim(anchor: np.ndarray, query: np.ndarray, sims: dict, family: str, metric: str) -> dict:

@@ -14,8 +14,7 @@ from random import sample
 from Bio import SeqIO
 import numpy as np
 import torch
-from utility import embed_seq, load_model
-from dct_embed import quant2D
+from util import load_model, Embedding, Transform
 from scipy.spatial.distance import cityblock
 
 log_filename = 'data/logs/search_dct.log'  #pylint: disable=C0103
@@ -24,7 +23,8 @@ logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')
 
 
-def embed_query(sequence: str, tokenizer, model, device: str, args: argparse.Namespace) -> np.ndarray:
+def embed_query(
+    sequence: str, tokenizer, model, device: str, args: argparse.Namespace) -> np.ndarray:
     """=============================================================================================
     This function loads a query sequence from file and embeds it using the provided tokenizer and
     encoder.
@@ -34,16 +34,20 @@ def embed_query(sequence: str, tokenizer, model, device: str, args: argparse.Nam
     :param model: encoder model
     :param device: cpu or gpu
     :param args: encoder type and layer to extract features from (if using esm2)
-    :return np.ndarray: embedding of query sequence
+    :return Embedding: embedding of query sequence
     ============================================================================================="""
 
+    # Get seq from file
     seq = ()
     with open(sequence, 'r', encoding='utf8') as f:
         for seq in SeqIO.parse(f, 'fasta'):
             seq = (seq.id, str(seq.seq))
-    embed = embed_seq(seq, tokenizer, model, device, args)
 
-    return embed
+    # Initialize Embedding object and embed sequence
+    embed = Embedding(seq[0], seq[1], None)
+    embed.embed_seq(tokenizer, model, device, args)
+
+    return embed.embed[1]
 
 
 def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, fam: str, metric: str) -> dict:
@@ -88,7 +92,7 @@ def query_search(query: np.ndarray, search_db: np.ndarray, results: int, metric:
     # Search query against every dct embedding
     sims = {}
     for dct in search_db:
-        fam, dct = dct[0], dct[1]  # family name, dct vector for family
+        fam, dct = dct.trans[0], dct.trans[1]  # family name, dct vector for family
         if fam not in sims:  # store sims in dict
             sims[fam] = []
         sims = query_sim(dct, query, sims, fam, metric)  # compare query to dct
@@ -156,7 +160,7 @@ def main():
 
     # Load embed/dct database
     search_db = np.load(args.d, allow_pickle=True)
-    search_fams = [arr[0] for arr in search_db]
+    search_fams = [transform.trans[0] for transform in search_db]
 
     # Call query_search for every query sequence in a folder
     match, top, clan, total = 0, 0, 0, 0
@@ -171,12 +175,13 @@ def main():
         seq_file = f'{direc}/{fam}/{query}'
         embed = embed_query(seq_file, tokenizer, model, device, args)
         try:
-            embed = quant2D(embed, args.s1, args.s2)  # nxn 1D array
+            embed = Transform(f'{fam}/{query}', np.array(embed), None)
+            embed.quant_2D(args.s1, args.s2)
         except ValueError:  # Some sequences are too short to transform
             continue
 
         # Search idct embeddings and analyze results
-        results = query_search(embed, search_db, 100, 'cityblock')
+        results = query_search(embed.trans[1], search_db, 100, 'cityblock')
         m, t, c = search_results(f'{fam}/{query}', results)
         (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
         logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)

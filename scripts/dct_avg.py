@@ -8,7 +8,7 @@ import argparse
 import os
 import logging
 import numpy as np
-from dct_embed import quant2D
+from util import Transform
 from embed_avg import get_seqs, cons_pos, get_embed
 
 log_filename = 'data/logs/dct_avg.log'  #pylint: disable=C0103
@@ -17,7 +17,8 @@ logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')
 
 
-def transform_avgs(positions: dict, embeddings: dict, args: argparse.Namespace) -> np.ndarray:
+def transform_avgs(
+        fam: str, positions: dict, embeddings: dict, args: argparse.Namespace) -> np.ndarray:
     """=============================================================================================
     This function accepts a dictionary of positions that are included in the consensus sequence and
     a dictionary of embeddings. It averages the embeddings for each position and returns the iDCT
@@ -46,81 +47,10 @@ def transform_avgs(positions: dict, embeddings: dict, args: argparse.Namespace) 
         avg_embed.append(np.mean(embed, axis=0))  # Find mean for each position (float)
 
     # Perform idct on avg_embed
-    avg_embed = np.array(avg_embed)
-    avg_dct = quant2D(avg_embed, args.s1, args.s2)  # nxn 1D array
+    avg_embed = Transform(fam, np.array(avg_embed), None)
+    avg_embed.quant_2D(args.s1, args.s2)
 
-    return avg_dct
-
-
-def transform_cons(positions: dict, embeddings: dict, args: argparse.Namespace) -> np.ndarray:
-    """=============================================================================================
-    This function accepts a dictionary of positions that are included in the consensus sequence and
-    a dictionary of embeddings. It transforms the sequence with only consensus positions using iDCT
-    and returns the iDCT vector as a numpy array.
-
-    :param positions: dict where seq id is key with list of positions as value
-    :param embeddings: dict where seq is key with list of embeddings as value
-    :param args: argparse.Namespace object with dct dimensions
-    :return avg_dct: numpy array of iDCT vector
-    ============================================================================================="""
-
-    # For each seq in embeddings, get consensus positions and transform embedding
-    dcts = {}
-    for seq in embeddings:
-        embed = []
-        for pos in positions[seq]:
-            embed.append(embeddings[seq][pos])
-
-        # Transform embedding unless dimensions are too small
-        embed = np.array(embed)
-        try:
-            dct = quant2D(embed, args.s1, args.s2)
-        except ValueError:
-            continue
-
-        # Add each position in dct vec to dcts dict where position is key and list of dcts is value
-        for i, pos in enumerate(dct):
-            if i not in dcts:
-                dcts[i] = []
-            dcts[i].append(pos)
-
-    # Average dcts for each position and convert to np array
-    for pos in dcts:
-        dcts[pos] = round(np.mean(dcts[pos]), 0)
-    avg_dct = np.array([int(val) for val in dcts.values()])
-
-    return avg_dct
-
-
-def transform_embs(embeddings: dict, args: argparse.Namespace) -> np.ndarray:
-    """=============================================================================================
-    This function accepts a dictionary of embeddings, transforms each one with iDCT, and averages
-    them. It returns the iDCT vector as a numpy array.
-
-    :param embeddings: dict where seq is key with list of embeddings as value
-    :param args: argparse.Namespace object with dct dimensions
-    :return avg_dct: numpy array of iDCT vector
-    ============================================================================================="""
-
-    dcts = []
-    for seq in embeddings:
-        embed = []
-        for pos in embeddings[seq]:
-            if isinstance(pos, int) is False:  # Ignore 0's that were added for padding
-                embed.append(pos)
-
-        # Transform embedding unless dimensions are too small
-        embed = np.array(embed)
-        try:
-            dcts.append(quant2D(embed, args.s1, args.s2))
-        except ValueError:
-            continue
-
-    # Average dcts and convert to np array
-    dcts = np.mean(dcts, axis=0)
-    avg_dct = np.array([int(val) for val in dcts])
-
-    return avg_dct
+    return avg_embed
 
 
 def main():
@@ -135,7 +65,6 @@ def main():
     parser.add_argument('-d', type=str, default='data/esm2_embed', help='direc of embeds to avg')
     parser.add_argument('-s1', type=int, default=5)
     parser.add_argument('-s2', type=int, default=44)
-    parser.add_argument('-t', type=str, default='avg', help ='avg, cons, or all')
     args = parser.parse_args()
 
     dcts = []
@@ -150,16 +79,9 @@ def main():
         embed_direc = f'{args.d}/{fam}'
         embeddings = get_embed(embed_direc, sequences)
 
-        if args.t == 'avg':
-            avg_dct = transform_avgs(positions, embeddings, args)
-        if args.t == 'cons':
-            avg_dct = transform_cons(positions, embeddings, args)
-        if args.t == 'all':
-            avg_dct = transform_embs(embeddings, args)
-
-        # Store fam and its avg_dct in a numpy array
-        fam_dct = np.array([fam, avg_dct], dtype=object)
-        dcts.append(fam_dct)
+        # Transform each average embedding and store in list
+        avg_dct = transform_avgs(fam, positions, embeddings, args)
+        dcts.append(avg_dct)
 
     # Save all dcts to file
     np.save('data/avg_dct.npy', dcts)

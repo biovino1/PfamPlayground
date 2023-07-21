@@ -10,6 +10,7 @@ import re
 import esm
 import torch
 import numpy as np
+from scipy.fft import dct, idct
 from transformers import T5EncoderModel, T5Tokenizer
 
 
@@ -41,7 +42,7 @@ def load_model(encoder: str, device: str) -> tuple:
 
 class Embedding:
     """============================================================================================
-    This class stores embeddings and for a single protein sequence.
+    This class stores embeddings for a single protein sequence.
     ============================================================================================"""
 
 
@@ -68,7 +69,7 @@ class Embedding:
         ========================================================================================="""
 
         self.seq[1] = re.sub(r"[UZOB]", "X", self.seq[1]).upper()
-        self.seq[1] = re.sub(r"\.", "", self.seq[1])
+        self.seq[1] = re.sub(r"\.", "", self.seq[1])  #//NOSONAR
         self.seq[1] = [' '.join([*self.seq[1]])]
 
 
@@ -116,7 +117,7 @@ class Embedding:
 
         # Embed sequences
         self.seq[1] = self.seq[1].upper()  # tok does not convert to uppercase
-        batch_labels, batch_strs, batch_tokens = tokenizer([self.seq])  #pylint: disable=W0612
+        _, _, batch_tokens = tokenizer([self.seq])
         batch_tokens = batch_tokens.to(device)  # send tokens to gpu
 
         with torch.no_grad():
@@ -141,3 +142,67 @@ class Embedding:
             self.prot_t5xl_embed(tokenizer, model, device)
         if args.e == 'esm2':
             self.esm2_embed(tokenizer, model, device, args.l)
+
+
+class Transform:
+    """============================================================================================
+    This class stores inverse discrete cosine transforms (iDCT) for a single protein sequence.
+    ============================================================================================"""
+
+
+    def __init__(self, seqid: str, embed: np.ndarray, transform: None):
+        """=========================================================================================
+        Defines transform class, which is a protein id, embedding, and transform.
+
+        :param seqid: protein ID
+        :param embed: embedding (n x m matrix)
+        :param transform: transform (n*m 1D array), not initialized by default
+        ========================================================================================="""
+
+        self.embed = np.array([seqid, embed], dtype=object)
+        self.trans = np.array([seqid, transform], dtype=object)
+
+
+    def scale(self, vec: np.ndarray) -> np.ndarray:
+        """=========================================================================================
+        Scale from protsttools. Takes a vector and returns it scaled between 0 and 1.
+
+        :param v: vector to be scaled
+        :return: scaled vector
+        ========================================================================================="""
+
+        maxi = np.max(vec)
+        mini = np.min(vec)
+        return (vec - mini) / float(maxi - mini)
+
+
+    def iDCT_quant(self, vec: np.ndarray, num: int) -> np.ndarray:
+        """=========================================================================================
+        iDCTquant from protsttools. Takes a vector and returns its iDCT.
+
+        :param vec: vector to be transformed
+        :param num: number of coefficients to keep
+        :return: transformed vector
+        ========================================================================================="""
+
+        f = dct(vec.T, type=2, norm='ortho')
+        trans = idct(f[:,:num], type=2, norm='ortho')  #pylint: disable=E1126
+        for i in range(len(trans)):  #pylint: disable=C0200
+            trans[i] = self.scale(trans[i])  #pylint: disable=E1137
+        return trans.T  #pylint: disable=E1101
+
+
+    def quant_2D(self, n_dim: int, m_dim: int):
+        """=========================================================================================
+        quant2D from protsttools. Takes an embedding and returns its iDCT on both axes.
+
+        :param emb: embedding to be transformed (n x m array)
+        :param n_dim: number of coefficients to keep on first axis
+        :param m_dim: number of coefficients to keep on second axis
+        :return: transformed embedding (n*m 1D array)
+        ========================================================================================="""
+
+        dct = self.iDCT_quant(self.embed[1][1:len(self.embed[1])-1], n_dim)  #pylint: disable=W0621
+        ddct = self.iDCT_quant(dct.T, m_dim).T
+        ddct = ddct.reshape(n_dim * m_dim)
+        self.trans[1] = (ddct*127).astype('int8')
