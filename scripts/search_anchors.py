@@ -17,11 +17,13 @@ import torch
 from utility import embed_seq, load_model
 from scipy.spatial.distance import cityblock
 
-logging.basicConfig(filename='data/logs/search_anchors.log',
+log_filename = 'data/logs/search_anchors.log'  #pylint: disable=C0103
+os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')
 
 
-def embed_query(sequence: str, tokenizer, model, device, encoder: str) -> np.ndarray:
+def embed_query(sequence: str, tokenizer, model, device, args: argparse.Namespace) -> np.ndarray:
     """=============================================================================================
     This function loads a query sequence from file and embeds it using the provided tokenizer and
     encoder.
@@ -37,7 +39,7 @@ def embed_query(sequence: str, tokenizer, model, device, encoder: str) -> np.nda
     with open(sequence, 'r', encoding='utf8') as f:
         for seq in SeqIO.parse(f, 'fasta'):
             seq = (seq.id, str(seq.seq))
-    embed = embed_seq(seq, tokenizer, model, device, encoder)
+    embed = embed_seq(seq, tokenizer, model, device, args)
 
     return embed
 
@@ -183,7 +185,7 @@ def main():
         queries = os.listdir(f'{direc}/{fam}')
         query = sample(queries, 1)[0]
         seq_file = f'{direc}/{fam}/{query}'
-        embed = embed_query(seq_file, tokenizer, model, device, args.e)
+        embed = embed_query(seq_file, tokenizer, model, device, args)
 
         # Search anchors and analyze results
         results = query_search(embed, args.d, 100, 'cosine')

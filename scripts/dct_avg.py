@@ -11,6 +11,11 @@ import numpy as np
 from dct_embed import quant2D
 from embed_avg import get_seqs, cons_pos, get_embed
 
+log_filename = 'data/logs/dct_avg.log'  #pylint: disable=C0103
+os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+logging.basicConfig(filename=log_filename, filemode='w',
+                     level=logging.INFO, format='%(message)s')
+
 
 def transform_avgs(positions: dict, embeddings: dict, args: argparse.Namespace) -> np.ndarray:
     """=============================================================================================
@@ -126,9 +131,6 @@ def main():
     saved to a numpy array.
     ============================================================================================="""
 
-    logging.basicConfig(filename='data/logs/dct_avg.log',
-                     level=logging.INFO, format='%(message)s')
-
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='data/esm2_embed', help='direc of embeds to avg')
     parser.add_argument('-s1', type=int, default=5)
@@ -147,6 +149,7 @@ def main():
         # Get embeddings for each sequence in family and average them
         embed_direc = f'{args.d}/{fam}'
         embeddings = get_embed(embed_direc, sequences)
+
         if args.t == 'avg':
             avg_dct = transform_avgs(positions, embeddings, args)
         if args.t == 'cons':

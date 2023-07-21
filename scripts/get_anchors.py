@@ -13,7 +13,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from embed_avg import get_seqs, cons_pos, get_embed
 
-logging.basicConfig(filename='data/logs/get_anchors.log',
+log_filename = 'data/logs/get_anchors.log'  #pylint: disable=C0103
+os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')
 
 

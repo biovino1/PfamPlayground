@@ -10,9 +10,11 @@ import os
 import torch
 import numpy as np
 from Bio import SeqIO
-from utility import load_model, embed_seq
+from util import load_model, Embedding
 
-logging.basicConfig(filename='data/logs/embed_pfam.log',
+log_filename = 'data/logs/embed_pfam.log'  #pylint: disable=C0103
+os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(asctime)s %(message)s')
 
 
@@ -59,21 +61,21 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
 
         # Check if embeddings already exist
         if os.path.exists(f'{direc}/{fam}/embed.npy'):
-            logging.info('Embedding for %s already exists. Skipping...', fam)
-            break
+            logging.info('Embeddings for %s already exists. Skipping...\n', fam)
+            return  # break out of function or else empty list will be saved
 
         # Skip consensus sequence
         if seq[0] == 'consensus':
             continue
 
-        # Embed and save sequence id and embed in array
-        embed = embed_seq(seq, tokenizer, model, device, args)
-        embeds.append(np.array([seq[0], embed], dtype=object))  # [(id, embed)]
+        # Initialize Embedding object and embed sequence
+        embed = Embedding(seq[0], seq[1], None)
+        embed.embed_seq(tokenizer, model, device, args)
+        embeds.append(embed.embed)
 
     # Save embeds to file
     with open(f'{direc}/{fam}/embed.npy', 'wb') as emb:
         np.save(emb, embeds)
-
     logging.info('Finished embedding sequences in %s\n', fam)
 
 
@@ -85,8 +87,8 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='data')
-    parser.add_argument('-e', type=str, default='esm2')
-    parser.add_argument('-l', type=int, default=17)
+    parser.add_argument('-e', type=str, default='prott5', help='prott5 or esm2')
+    parser.add_argument('-l', type=int, default=17, help='layers only for esm2')
     args = parser.parse_args()
 
     # Load tokenizer and encoder
@@ -96,7 +98,7 @@ def main():
     # Get names of all family folders and embed all seqs in each one
     families = [f'data/families_nogaps/{fam}' for fam in os.listdir('data/families_nogaps')]
     for fam in families:
-        logging.info('Embedding sequences in %s...', fam)
+        logging.info('Embedding sequences in %s with %s...', fam, args.e)
         embed_fam(fam, tokenizer, model, device, args)
 
 

@@ -18,7 +18,9 @@ from utility import embed_seq, load_model
 from dct_embed import quant2D
 from scipy.spatial.distance import cityblock
 
-logging.basicConfig(filename='data/logs/search_dct.log',
+log_filename = 'data/logs/search_dct.log'  #pylint: disable=C0103
+os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')
 
 

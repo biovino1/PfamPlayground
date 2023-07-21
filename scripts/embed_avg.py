@@ -7,6 +7,7 @@ Ben Iovino  05/12/23   SearchEmb
 
 import argparse
 import os
+import logging
 import numpy as np
 from Bio import SeqIO
 
@@ -126,11 +127,18 @@ def main():
     average_embed() to average the embeddings and save them to file.
     ============================================================================================="""
 
+    # Put log in main because other scripts call functions from this script and will log incorrectly
+    log_filename = 'data/logs/embed_avg.log'  #pylint: disable=C0103
+    os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+    logging.basicConfig(filename=log_filename, filemode='w',
+                     level=logging.INFO, format='%(message)s')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='data/prott5_embed', help='direc of embeds to avg')
     args = parser.parse_args()
 
-    for family in os.listdir(args.d):
+    for i, family in enumerate(os.listdir(args.d)):
+        logging.info('Averaging embeddings for %s, %s', family, i)
 
         # Check if average embedding already exists
         if os.path.exists(f'data/avg_embed/{family}/avg_embed.npy'):
