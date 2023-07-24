@@ -9,8 +9,11 @@ Ben Iovino  07/20/23   DCTDomain
 
 
 import logging
+import os
 
-logging.basicConfig(filename='data/test_layers.log',
+log_filename = 'data/logs/test_layers.log'  #pylint: disable=C0103
+os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')
 
 
@@ -19,9 +22,16 @@ def main():
     Main
     ============================================================================================="""
 
-    # Embed, transform, and compute distances
+    # Embed seqs, transform them, and search
     for i in range(1, 36):
-        print(i)
+        os.system(f'python scripts/embed_pfam.py -d data/ -e esm2 -l {i}')
+        os.system('python scripts/dct_avg.py -d data/esm2_embed -s1 5 -s2 44')
+        os.system(f'python scripts/search_dct.py -d data/avg_dct.npy -l {i} -s1 5 -s2 44')
+
+        # Read last line of search log and write to test_layers log
+        with open('data/logs/search_dct.log', 'r', encoding='utf8') as file:
+            last_line = file.readlines()[-1]
+        logging.info('Search results for ESM2 layer %s\n%s\n', i, last_line)
 
 
 if __name__ == '__main__':

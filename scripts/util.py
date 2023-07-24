@@ -199,10 +199,20 @@ class Transform:
         :param emb: embedding to be transformed (n x m array)
         :param n_dim: number of coefficients to keep on first axis
         :param m_dim: number of coefficients to keep on second axis
-        :return: transformed embedding (n*m 1D array)
         ========================================================================================="""
 
         dct = self.iDCT_quant(self.embed[1][1:len(self.embed[1])-1], n_dim)  #pylint: disable=W0621
         ddct = self.iDCT_quant(dct.T, m_dim).T
         ddct = ddct.reshape(n_dim * m_dim)
         self.trans[1] = (ddct*127).astype('int8')
+
+
+    def concat(self, vec: np.ndarray):
+        """=========================================================================================
+        Concatenates a vector to the transform.
+
+        :param vec: vector to be concatenated
+        ========================================================================================="""
+
+        transform = self.trans[1]
+        self.trans[1] = np.concatenate((transform, vec))

@@ -81,7 +81,7 @@ def main():
 
         # Transform each average embedding and store in list
         avg_dct = transform_avgs(fam, positions, embeddings, args)
-        dcts.append(avg_dct)
+        dcts.append(avg_dct.trans)
 
     # Save all dcts to file
     np.save('data/avg_dct.npy', dcts)

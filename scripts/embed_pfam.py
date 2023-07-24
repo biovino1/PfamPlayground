@@ -87,7 +87,7 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='data')
-    parser.add_argument('-e', type=str, default='prott5', help='prott5 or esm2')
+    parser.add_argument('-e', type=str, default='esm2', help='prott5 or esm2')
     parser.add_argument('-l', type=int, default=17, help='layers only for esm2')
     args = parser.parse_args()
 
