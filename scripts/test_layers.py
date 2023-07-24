@@ -30,7 +30,8 @@ def main():
 
         # Read last line of search log and write to test_layers log
         with open('data/logs/search_dct.log', 'r', encoding='utf8') as file:
-            last_line = file.readlines()[-1]
+            lines = file.readlines()
+            last_line = lines[-2]
         logging.info('Search results for ESM2 layer %s\n%s\n', i, last_line)
 
 

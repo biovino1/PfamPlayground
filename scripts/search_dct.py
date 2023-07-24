@@ -24,7 +24,7 @@ logging.basicConfig(filename=log_filename, filemode='w',
 
 
 def embed_query(
-    sequence: str, tokenizer, model, device: str, args: argparse.Namespace) -> np.ndarray:
+    sequence: str, tokenizer, model, device: str, encoder: str, layer: int) -> np.ndarray:
     """=============================================================================================
     This function loads a query sequence from file and embeds it using the provided tokenizer and
     encoder.
@@ -33,7 +33,8 @@ def embed_query(
     :param tokenizer: tokenizer
     :param model: encoder model
     :param device: cpu or gpu
-    :param args: encoder type and layer to extract features from (if using esm2)
+    :param encoder: prott5 or esm2
+    :param layer: layer to extract features from (if using esm2)
     :return Embedding: embedding of query sequence
     ============================================================================================="""
 
@@ -45,7 +46,7 @@ def embed_query(
 
     # Initialize Embedding object and embed sequence
     embed = Embedding(seq[0], seq[1], None)
-    embed.embed_seq(tokenizer, model, device, args)
+    embed.embed_seq(tokenizer, model, device, encoder, layer)
 
     return embed.embed[1]
 
@@ -92,7 +93,7 @@ def query_search(query: np.ndarray, search_db: np.ndarray, results: int, metric:
     # Search query against every dct embedding
     sims = {}
     for dct in search_db:
-        fam, dct = dct.trans[0], dct.trans[1]  # family name, dct vector for family
+        fam, dct = dct[0], dct[1]  # family name, dct vector for family
         if fam not in sims:  # store sims in dict
             sims[fam] = []
         sims = query_sim(dct, query, sims, fam, metric)  # compare query to dct
@@ -121,23 +122,23 @@ def search_results(query: str, results: dict):
     # See if query is in top results
     results_fams = [fam.split('/')[0] for fam in results.keys()]
     query_fam = query.split('/')[0]
-    match, top, clan = 0, 0, 0
+    counts = {'match': 0, 'top': 0, 'clan': 0}
     if query_fam == results_fams[0]:  # Top result
-        match += 1
-        return match, top, clan
+        counts['match'] += 1
+        return counts
     if query_fam in results_fams:  # Top n results
-        top += 1
-        return match, top, clan
+        counts['top'] += 1
+        return counts
 
     # Read clans dict and see if query is in same clan as top result
     with open('data/clans.pkl', 'rb') as file:
         clans = pickle.load(file)
     for fams in clans.values():
         if query_fam in fams and results_fams[0] in fams:
-            clan += 1
-            return match, top, clan
+            counts['clans'] += 1
+            return counts
 
-    return match, top, clan
+    return counts
 
 
 def main():
@@ -160,10 +161,10 @@ def main():
 
     # Load embed/dct database
     search_db = np.load(args.d, allow_pickle=True)
-    search_fams = [transform.trans[0] for transform in search_db]
+    search_fams = [transform[0] for transform in search_db]
 
     # Call query_search for every query sequence in a folder
-    match, top, clan, total = 0, 0, 0, 0
+    counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
     direc = 'data/full_seqs'
     for fam in os.listdir(direc):
         if fam not in search_fams:
@@ -173,7 +174,7 @@ def main():
         queries = os.listdir(f'{direc}/{fam}')
         query = sample(queries, 1)[0]
         seq_file = f'{direc}/{fam}/{query}'
-        embed = embed_query(seq_file, tokenizer, model, device, args)
+        embed = embed_query(seq_file, tokenizer, model, device, args.e, args.l)
         try:
             embed = Transform(f'{fam}/{query}', np.array(embed), None)
             embed.quant_2D(args.s1, args.s2)
@@ -182,9 +183,13 @@ def main():
 
         # Search idct embeddings and analyze results
         results = query_search(embed.trans[1], search_db, 100, 'cityblock')
-        m, t, c = search_results(f'{fam}/{query}', results)
-        (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
-        logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)
+        search_counts = search_results(f'{fam}/{query}', results)
+        counts['match'] += search_counts['match']
+        counts['top'] += search_counts['top']
+        counts['clan'] += search_counts['clan']
+        counts['total'] += 1
+        logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n',
+                      counts['total'], counts['match'], counts['top'], counts['clan'])
 
 
 if __name__ == '__main__':

@@ -5,7 +5,6 @@ ProtT5_XL_UniRef50 and ESM-2_t36_3B models and transform them to DCT vectors.
 Ben Iovino  07/21/23   SearchEmb
 ================================================================================================"""
 
-import argparse
 import re
 import esm
 import torch
@@ -126,7 +125,7 @@ class Embedding:
         self.embed[1] = embed[0]
 
 
-    def embed_seq(self, tokenizer, model, device: str, args: argparse.Namespace):
+    def embed_seq(self, tokenizer, model, device: str, encoder: str, layer: int):
         """=========================================================================================
         This function accepts a protein id and its sequence and returns its embedding, each vector
         representing a single amino acid using the provided tokenizer and encoder.
@@ -134,14 +133,15 @@ class Embedding:
         :param tokenizer: tokenizer
         :param model: encoder model
         :param device: gpu/cpu
-        :param args: encoder type and layer to extract features from (if using esm2)
+        :param encoder: prott5 or esm2
+        :param layer: layer to extract features from (if using esm2)
         ========================================================================================="""
 
         # ProtT5_XL_UniRef50 or ESM-2_t36_3B
-        if args.e == 'prott5':
+        if encoder == 'prott5':
             self.prot_t5xl_embed(tokenizer, model, device)
-        if args.e == 'esm2':
-            self.esm2_embed(tokenizer, model, device, args.l)
+        if encoder == 'esm2':
+            self.esm2_embed(tokenizer, model, device, layer)
 
 
 class Transform:
