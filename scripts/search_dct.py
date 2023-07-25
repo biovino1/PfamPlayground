@@ -51,6 +51,32 @@ def embed_query(
     return embed.embed[1]
 
 
+def get_transform(seq: str, tokenizer, model, device: str, args: argparse.Namespace) -> Transform:
+    """=============================================================================================
+    This function takes a query sequence and transform it into a dct representation based on the
+    given arguments.
+    ============================================================================================="""
+
+    # Get DCT for each layer
+    query = '/'.join(seq.split('/')[2:])
+    trans = {}
+    for i, layer in enumerate(args.l):
+        embed = embed_query(seq, tokenizer, model, device, args.e, layer)
+        try:
+            embed = Transform(query, np.array(embed), None)
+            embed.quant_2D(args.s1[i], args.s2[i])
+        except ValueError:  # Some sequences are too short to transform
+            return None  #\\NOSONAR
+        trans[layer] = embed
+
+    # Concatenate DCTs
+    dct = Transform(query, None, None)
+    for layer, tran in trans.items():
+        dct.concat(tran.trans[1])
+
+    return dct
+
+
 def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, fam: str, metric: str) -> dict:
     """=============================================================================================
     This function takes a dct vector (1D array) and a query dct vector (1D array) and finds the
@@ -148,11 +174,11 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/avg_dct.npy')
+    parser.add_argument('-d', type=str, default='data/transforms.npy')
     parser.add_argument('-e', type=str, default='esm2')
-    parser.add_argument('-l', type=int, default=17)
-    parser.add_argument('-s1', type=int, default=5)
-    parser.add_argument('-s2', type=int, default=44)
+    parser.add_argument('-l', type=list, default=[17, 23])
+    parser.add_argument('-s1', type=list, default=[5, 3])
+    parser.add_argument('-s2', type=list, default=[44, 82])
     args = parser.parse_args()
 
     # Load tokenizer and encoder
@@ -170,20 +196,17 @@ def main():
         if fam not in search_fams:
             continue
 
-        # Randomly sample one query from family
+        # Randomly sample one query from family and get it appropriate dct
         queries = os.listdir(f'{direc}/{fam}')
         query = sample(queries, 1)[0]
         seq_file = f'{direc}/{fam}/{query}'
-        embed = embed_query(seq_file, tokenizer, model, device, args.e, args.l)
-        try:
-            embed = Transform(f'{fam}/{query}', np.array(embed), None)
-            embed.quant_2D(args.s1, args.s2)
-        except ValueError:  # Some sequences are too short to transform
+        query = get_transform(seq_file, tokenizer, model, device, args)
+        if query is None:
             continue
 
         # Search idct embeddings and analyze results
-        results = query_search(embed.trans[1], search_db, 100, 'cityblock')
-        search_counts = search_results(f'{fam}/{query}', results)
+        results = query_search(query.trans[1], search_db, 100, 'cityblock')
+        search_counts = search_results(query.trans[0], results)
         counts['match'] += search_counts['match']
         counts['top'] += search_counts['top']
         counts['clan'] += search_counts['clan']

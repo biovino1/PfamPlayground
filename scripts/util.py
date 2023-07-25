@@ -211,8 +211,11 @@ class Transform:
         """=========================================================================================
         Concatenates a vector to the transform.
 
-        :param vec: vector to be concatenated
+        :param vec: vector to be added to transform
         ========================================================================================="""
 
         transform = self.trans[1]
-        self.trans[1] = np.concatenate((transform, vec))
+        if transform is None:  # Initialize transform if empty
+            self.trans[1] = vec
+        else:
+            self.trans[1] = np.concatenate((transform, vec))
