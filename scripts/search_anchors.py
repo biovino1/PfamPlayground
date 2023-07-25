@@ -126,12 +126,13 @@ def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> 
     return top_sims
 
 
-def search_results(query: str, results: dict):
+def search_results(query: str, results: dict) -> dict:
     """=============================================================================================
     This function compares a query sequence to a dictionary of results.
 
     :param query: query sequence
     :param results: dictionary of results from searching query against anchors
+    :return counts: dictionary of counts for matches, top 10, and same clan
     ============================================================================================="""
 
     # Log time and similarity for top 5 results
@@ -140,24 +141,25 @@ def search_results(query: str, results: dict):
         logging.info('%s,%s', fam, sim)
 
     # See if query is in top results
+    results_fams = [fam.split('/')[0] for fam in results.keys()]
     query_fam = query.split('/')[0]
-    match, top, clan = 0, 0, 0
-    if query_fam == list(results.keys())[0]:  # Top result
-        match += 1
-        return match, top, clan
-    if query_fam in results:  # Top n results
-        top += 1
-        return match, top, clan
+    counts = {'match': 0, 'top': 0, 'clan': 0}
+    if query_fam == results_fams[0]:  # Top result
+        counts['match'] += 1
+        return counts
+    if query_fam in results_fams:  # Top n results
+        counts['top'] += 1
+        return counts
 
     # Read clans dict and see if query is in same clan as top result
     with open('data/clans.pkl', 'rb') as file:
         clans = pickle.load(file)
     for fams in clans.values():
-        if query_fam in fams and list(results.keys())[0] in fams:
-            clan += 1
-            return match, top, clan
+        if query_fam in fams and results_fams[0] in fams:
+            counts['clans'] += 1
+            return counts
 
-    return match, top, clan
+    return counts
 
 
 def main():
@@ -168,7 +170,9 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='data/anchors')
-    parser.add_argument('-e', type=str, default='prott5')
+    parser.add_argument('-e', type=str, default='esm2')
+    parser.add_argument('-l', type=int, default=17)
+    parser.add_argument('-t', type=int, default=100)
     args = parser.parse_args()
 
     # Load tokenizer and encoder
@@ -176,7 +180,7 @@ def main():
     tokenizer, model = load_model(args.e, device)
 
     # Call query_search for every query sequence in a folder
-    match, top, clan, total = 0, 0, 0, 0
+    counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
     direc = 'data/full_seqs'
     for fam in os.listdir(direc):
 
@@ -191,10 +195,14 @@ def main():
         embed = embed_query(seq_file, tokenizer, model, device, args)
 
         # Search anchors and analyze results
-        results = query_search(embed, args.d, 100, 'cosine')
-        m, t, c = search_results(f'{fam}/{query}', results)
-        (match, top, clan, total) = (match + m, top + t, clan + c, total + 1)
-        logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n', total, match, top, clan)
+        results = query_search(embed, args.d, args.t, 'cosine')
+        search_counts = search_results(f'{fam}/{query}', results)
+        counts['match'] += search_counts['match']
+        counts['top'] += search_counts['top']
+        counts['clan'] += search_counts['clan']
+        counts['total'] += 1
+        logging.info('Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
+                      counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
 
 
 if __name__ == '__main__':

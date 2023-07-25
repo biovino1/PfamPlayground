@@ -276,11 +276,11 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', type=int, help='Number of anchor residues to find', default=3)
+    parser.add_argument('-d', type=str, help='direc of embeds to avg', default='data/esm2_17_embed')
     parser.add_argument('-f', type=int, help='Closeness of regions to filter out', default=3)
     args = parser.parse_args()
 
-    direc = 'data/prott5_embed'
-    for family in os.listdir(direc):
+    for family in os.listdir(args.d):
 
         # Check if anchors already exist
         if os.path.exists(f'data/anchors/{family}/anchor_embed.txt'):
@@ -292,7 +292,7 @@ def main():
         positions = cons_pos(sequences)
 
         # Get embeddings for each sequence in family and take only consensus positions
-        embeddings = get_embed(f'{direc}/{family}', sequences)
+        embeddings = get_embed(f'{args.d}/{family}', sequences)
         cons_embed = embed_pos(positions, embeddings)
 
         # Find regions of high cosine similarity to consensus embedding

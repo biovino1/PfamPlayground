@@ -134,7 +134,7 @@ def main():
                      level=logging.INFO, format='%(message)s')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/prott5_embed', help='direc of embeds to avg')
+    parser.add_argument('-d', type=str, default='data/esm2_17_embed', help='direc of embeds to avg')
     args = parser.parse_args()
 
     for i, family in enumerate(os.listdir(args.d)):

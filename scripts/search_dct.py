@@ -132,12 +132,13 @@ def query_search(query: np.ndarray, search_db: np.ndarray, results: int, metric:
     return top_sims
 
 
-def search_results(query: str, results: dict):
+def search_results(query: str, results: dict) -> dict:
     """=============================================================================================
     This function compares a query sequence to a dictionary of results.
 
     :param query: query sequence
     :param results: dictionary of results from searching query against dcts
+    :return counts: dictionary of counts for matches, top n results, and same clan
     ============================================================================================="""
 
     # Log time and similarity for top 5 results
