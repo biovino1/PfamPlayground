@@ -174,11 +174,12 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/transforms.npy')
+    parser.add_argument('-d', type=str, default='data/comb_dct.npy')
     parser.add_argument('-e', type=str, default='esm2')
-    parser.add_argument('-l', type=list, default=[17, 23])
-    parser.add_argument('-s1', type=list, default=[5, 3])
-    parser.add_argument('-s2', type=list, default=[44, 82])
+    parser.add_argument('-l', type=list, default=[17, 18, 25])
+    parser.add_argument('-t', type=int, default=100)
+    parser.add_argument('-s1', type=list, default=[5, 4, 3])
+    parser.add_argument('-s2', type=list, default=[44, 66, 80])
     args = parser.parse_args()
 
     # Load tokenizer and encoder
@@ -205,14 +206,14 @@ def main():
             continue
 
         # Search idct embeddings and analyze results
-        results = query_search(query.trans[1], search_db, 100, 'cityblock')
+        results = query_search(query.trans[1], search_db, args.t, 'cityblock')
         search_counts = search_results(query.trans[0], results)
         counts['match'] += search_counts['match']
         counts['top'] += search_counts['top']
         counts['clan'] += search_counts['clan']
         counts['total'] += 1
-        logging.info('Queries: %s, Matches: %s, Top10: %s, Clan: %s\n',
-                      counts['total'], counts['match'], counts['top'], counts['clan'])
+        logging.info('Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
+                      counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
 
 
 if __name__ == '__main__':

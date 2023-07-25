@@ -62,9 +62,9 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/esm2_embed', help='direc of embeds to avg')
-    parser.add_argument('-s1', type=int, default=5)
-    parser.add_argument('-s2', type=int, default=44)
+    parser.add_argument('-d', type=str, default='data/esm2_18_embed', help='direc of embeds to avg')
+    parser.add_argument('-s1', type=int, default=4)
+    parser.add_argument('-s2', type=int, default=66)
     args = parser.parse_args()
 
     dcts = []
@@ -84,7 +84,8 @@ def main():
         dcts.append(avg_dct.trans)
 
     # Save all dcts to file
-    np.save('data/avg_dct.npy', dcts)
+    enclay = '_'.join(args.d.split('/')[-1].split('_')[:2])  # enc/layer used to embed
+    np.save(f'data/{enclay}_{args.s1}{args.s2}_avg.npy', dcts)
 
 
 if __name__ == '__main__':

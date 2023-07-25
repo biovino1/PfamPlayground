@@ -50,7 +50,7 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
 
     # Get last directory in path
     fam = path.rsplit('/', maxsplit=1)[-1]
-    direc = f'{args.d}/{args.e}_embed'
+    direc = f'{args.d}/{args.e}_{args.l}_embed'
     if not os.path.isdir(f'{direc}/{fam}'):
         os.makedirs(f'{direc}/{fam}')
 
@@ -70,7 +70,7 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
 
         # Initialize Embedding object and embed sequence
         embed = Embedding(seq[0], seq[1], None)
-        embed.embed_seq(tokenizer, model, device, args)
+        embed.embed_seq(tokenizer, model, device, args.e, args.l)
         embeds.append(embed.embed)
 
     # Save embeds to file
@@ -88,7 +88,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='data')
     parser.add_argument('-e', type=str, default='esm2', help='prott5 or esm2')
-    parser.add_argument('-l', type=int, default=17, help='layers only for esm2')
+    parser.add_argument('-l', type=int, default=18, help='layers only for esm2')
     args = parser.parse_args()
 
     # Load tokenizer and encoder

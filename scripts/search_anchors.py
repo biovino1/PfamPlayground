@@ -42,7 +42,7 @@ def embed_query(sequence: str, tokenizer, model, device, args: argparse.Namespac
 
     # Initialize Embedding object and embed sequence
     embed = Embedding(seq[0], seq[1], None)
-    embed.embed_seq(tokenizer, model, device, args)
+    embed.embed_seq(tokenizer, model, device, args.e, args.l)
 
     return embed.embed[1]
 

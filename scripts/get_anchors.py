@@ -19,7 +19,7 @@ logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')
 
 
-def embed_pos(positions: dict, embeddings: dict) -> list:
+def embed_pos(positions: dict, embeddings: dict) -> dict:
     """=============================================================================================
     This function accepts a dictionary of positions that are included in the consensus sequence and
     a dictionary of embeddings. It returns a list of vectors that correspond to the consensus
@@ -27,7 +27,7 @@ def embed_pos(positions: dict, embeddings: dict) -> list:
 
     :param positions: dict where seq id is key with list of positions as value
     :param embeddings: dict where seq id is key with list of embeddings as value
-    :return list: list of vectors corresponding to consensus positions
+    :return dict: dict where position is key with list of embeddings as value
     ============================================================================================="""
 
     # Create a dict of lists where each list contains the embeddings for a position in the consensus

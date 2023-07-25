@@ -4,60 +4,54 @@ This script takes DCT transforms from npy files and combines them into a single 
 Ben Iovino  07/24/23   SearchEmb
 ================================================================================================"""
 
-import argparse
+import os
 import numpy as np
 from util import Transform
 
 
-def init_transforms(file: str) -> list:
+def combine(files: list):
     """=============================================================================================
-    This function takes a file of transforms and loads them as Transform objects.
+    This function takes a list of npy files containing DCT transforms and combines them into a
+    single transform.
 
-    :param transforms: list of transform files to load
-    :return: dictionary of transforms with sequence as key and list of transforms as value
+    :param files: list of npy files
     ============================================================================================="""
 
-    objects = []
-    with open(f'data/{file}', 'rb') as emb:
-        transforms = np.load(emb, allow_pickle=True)
-        for transform in transforms:
-            objects.append(Transform(transform[0], None, transform[1]))
-
-    return objects
-
-
-def comb_transforms(files: list, objects: list):
-    """=============================================================================================
-    This function takes a list of transform files and combines them into a single numpy array.
-
-    :param files: list of transform files to load
-    :param transforms: list of Transform objects
-    ============================================================================================="""
-
+    # Get all transforms
+    trdict = {}
     for file in files:
-        with open(f'data/{file}', 'rb') as emb:
-            transforms = np.load(emb, allow_pickle=True)
+        with open(file, 'rb') as emb:
+            trans = np.load(emb, allow_pickle=True)
+        for tran in trans:
+            trdict[tran[0]] = trdict.get(tran[0], []) + [tran[1]]
 
-        # Combine transforms with objects
-        for i, transform in enumerate(transforms):
-            objects[i].concat(transform[1])
+    # Concatenate DCTs
+    dcts = []
+    for fam, trans in trdict.items():
+        dct = Transform(fam, None, None)
+        for tran in trans:
+            dct.concat(tran)
+        dcts.append(dct.trans)
 
     # Save combined transforms
     with open('data/comb_dct.npy', 'wb') as emb:
-        np.save(emb, objects)
+        np.save(emb, dcts)
 
 
 def main():
     """=============================================================================================
-    Main    
+    Main calls combine() to combine all DCT transforms from the list of files.
     ============================================================================================="""
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-f', type=list, default=['avg_dct.npy', 'avg_dct2.npy'])
-    args = parser.parse_args()
+    # Get all avg transform files from data directory
+    avg_files = []
+    for file in os.listdir('data'):
+        if file.endswith('avg.npy'):
+            avg_files.append(f'data/{file}')
 
-    objects = init_transforms(args.f[0])
-    comb_transforms(args.f[1:], objects)
+    # Sort files by number of layers
+    avg_files = sorted(avg_files, key=lambda x: int(x.split('_')[-2]), reverse=True)
+    combine(avg_files)
 
 
 if __name__ == '__main__':
