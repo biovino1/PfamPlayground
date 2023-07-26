@@ -50,7 +50,7 @@ def main():
             avg_files.append(f'data/{file}')
 
     # Sort files by number of layers
-    avg_files = sorted(avg_files, key=lambda x: int(x.split('_')[-2]), reverse=True)
+    avg_files = sorted(avg_files, key=lambda x: int(x.split('_')[1]))
     combine(avg_files)
 
 

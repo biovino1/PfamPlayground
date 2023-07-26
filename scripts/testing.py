@@ -58,16 +58,19 @@ def test_transforms():
             for s2 in j:
 
                 # Calculate average dct embedding for each family
-                os.system(f'python scripts/dct_avg.py -d data/esm2_{lay}_embed -s1 {s1} -s2 {s2}')
+                os.system('python scripts/dct_avg.py '
+                    f'-d data/esm2_{lay}_embed -s1 {s1} -s2 {s2}')
 
                 # Search against the full pfam db
-                os.system(f'python scripts/search_dct.py -d data/esm2_{lay}_{s1}{s2}_avg.npy -l {lay} -s1 {s1} -s2 {s2}')
+                os.system('python scripts/search_dct.py '
+                    f'-d data/esm2_{lay}_{s1}{s2}_avg.npy -l {lay} -s1 {s1} -s2 {s2}')
 
                 # Read last line of search log and write to test_transforms log
                 with open('data/logs/search_dct.log', 'r', encoding='utf8') as file:
                     lines = file.readlines()
                     last_line = lines[-2]
-                logging.info('Search results for ESM2 layer %s with DCT dimensions %sx%s\n%s\n', lay, s1, s2, last_line)
+                logging.info('Search results for ESM2 layer %s with DCT dimensions %sx%s\n%s\n',
+                    lay, s1, s2, last_line)
                 os.system(f'rm data/esm2_{lay}_{s1}{s2}_avg.npy')
 
 
