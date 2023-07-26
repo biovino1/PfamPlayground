@@ -175,12 +175,12 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/comb_dct.npy')
+    parser.add_argument('-d', type=str, default='data/esm2_17_320_avg.npy')
     parser.add_argument('-e', type=str, default='esm2')
-    parser.add_argument('-l', type=list, default=[17, 18, 25])
+    parser.add_argument('-l', type=int, nargs='+', default=[17])
     parser.add_argument('-t', type=int, default=100)
-    parser.add_argument('-s1', type=list, default=[5, 4, 3])
-    parser.add_argument('-s2', type=list, default=[44, 66, 80])
+    parser.add_argument('-s1', type=int, nargs='+', default=[5, 4, 3])
+    parser.add_argument('-s2', type=int, nargs='+', default=[44, 66, 80])
     args = parser.parse_args()
 
     # Load tokenizer and encoder
