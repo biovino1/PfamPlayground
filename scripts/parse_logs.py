@@ -165,10 +165,10 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/logs/testing.log')
+    parser.add_argument('-d', type=str, default='data/logs/search_dct.log')
     args = parser.parse_args()
 
-    parse_test_transforms(args.d)
+    parse_search(args.d)
 
 
 if __name__ == '__main__':
