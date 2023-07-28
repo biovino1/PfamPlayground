@@ -7,6 +7,7 @@ Ben Iovino   07/25/23   SearchEmb
 import argparse
 import datetime
 import matplotlib.pyplot as plt
+from Bio import SeqIO
 
 
 def parse_search(file: str) -> dict:  #\\NOSONAR
@@ -61,6 +62,61 @@ def parse_search(file: str) -> dict:  #\\NOSONAR
     print(f'Average time per query: {avg_time/count}')
 
     return results
+
+
+def missed_queries(results: dict):
+    """=============================================================================================
+    This function takes the dictionary of results from parse_search() and finds the queries that
+    were not found.
+
+    :param results: dictionary where query is key and top result is value
+    ============================================================================================="""
+
+    # Get family names of missed queries
+    missed = []
+    for query, result in results.items():
+        if result[2] == 'incorrect':
+            missed.append(query.split('/', maxsplit=1)[0])
+
+    # Read number of sequences in each missed family and their average length
+    fams = {}
+    for fam in missed:
+        with open(f'data/families_nogaps/{fam}/seqs.fa', 'r', encoding='utf8') as fafile:
+            count, length = 0, 0
+            for seq in SeqIO.parse(fafile, 'fasta'):
+                count += 1
+                length += len(seq.seq)
+            fams[fam] = [count, length/count]
+
+    # Write missed families to file
+    with open('data/missed_families.txt', 'w', encoding='utf8') as mfile:
+        mfile.write('Family,Number of Sequences,Avg Length\n')
+        for fam, counts in fams.items():
+            mfile.write(f'{fam},{counts[0]},{int(counts[1])}\n')
+
+    # Graph histogram of number of sequences in each family
+    plt.figure(figsize=(12, 5))
+    plt.hist([fam[0] for fam in fams.values()], bins=30)
+    plt.xlabel('Number of Sequences')
+    plt.ylabel('Number of Families')
+    plt.title('Number of Sequences in Each Missed Family')
+    plt.grid(axis='y', linestyle='--')
+    plt.grid(axis='x', linestyle='--')
+    plt.axvline(x=64, color='r', linestyle='--')
+    plt.show()
+
+    # Plot number of sequences in each family vs. avg sequence length
+    plt.figure(figsize=(12, 5))
+    plt.plot([fam[1] for fam in fams.values()],
+              [fam[0] for fam in fams.values()], 'o', markersize=2)
+    plt.xlabel('Number of Sequences')
+    plt.ylabel('Avg Length of Sequences')
+    plt.title('Number of Sequences vs. Avg Length of Sequences in Each Missed Family')
+    plt.grid(axis='y', linestyle='--')
+    plt.grid(axis='x', linestyle='--')
+    plt.axvline(x=64, color='r', linestyle='--')
+    plt.axhline(y=170, color='r', linestyle='--')
+    plt.show()
 
 
 def parse_test_layers(file: str):
@@ -168,7 +224,8 @@ def main():
     parser.add_argument('-d', type=str, default='data/logs/search_dct.log')
     args = parser.parse_args()
 
-    parse_search(args.d)
+    results = parse_search(args.d)
+    missed_queries(results)
 
 
 if __name__ == '__main__':
