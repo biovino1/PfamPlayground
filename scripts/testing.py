@@ -1,15 +1,17 @@
 """================================================================================================
-This script takes each layer from ESM2-t36-3B and embeds sequences from families that were missed
-in prior searches and transforms each family's average embedding with DCT dimensions of 5x44.
-Sequences from the full pfam db are then searched against these dct representations and the results
-are logged.
+This script is used for various testing purposes.
 
 Ben Iovino  07/20/23   DCTDomain
 ================================================================================================"""
 
-
 import logging
 import os
+import numpy as np
+from random import sample
+import torch
+from Bio import SeqIO
+from util import load_model, Embedding, Transform
+
 
 log_filename = 'data/logs/testing.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
@@ -74,12 +76,76 @@ def test_transforms():
                 os.system(f'rm data/esm2_{lay}_{s1}{s2}_avg.npy')
 
 
+def test_full():  #\\NOSONAR
+    """=============================================================================================
+    Embed sequences from families that were missed in prior searches using every sequence in pfam
+    full database. Because there is no alignment for the full database, we will transform each
+    embedding then average the transforms for each family. These will be used as the family
+    representation during search.
+
+    Before embedding make sure these these lines of code are in the main function of embed_pfam.py:
+
+    with open('data/missed_families.txt', 'r', encoding='utf8') as f:
+        families = f.read().splitlines()
+    families = [f'data/full_seqs/{fam.split(",")[0]}' for fam in families]
+    ============================================================================================="""
+
+    # Direc for avg dcts
+    direc = 'data/full_embeds'
+    os.makedirs(direc, exist_ok=True)
+
+    # Load tokenizer and encoder
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  #pylint: disable=E1101
+    tokenizer, model = load_model('esm2', device)
+
+    # Get family names from file
+    with open('data/missed_families.txt', 'r', encoding='utf8') as f:
+        families = f.read().splitlines()
+    families = [f'{fam.split(",")[0]}' for fam in families][1:]
+
+    # Read sequences from seed and full databases
+    for fam in families:
+        seqs = []
+        for fam_dir in os.listdir('data/full_seqs'):
+            if fam == fam_dir:
+                for seq in SeqIO.parse(f'data/full_seqs/{fam_dir}/seqs.fa', 'fasta'):
+                    seqs.append((seq.id, str(seq.seq)))
+        seq_list = [seq[0] for seq in seqs]
+        for fam_dir in os.listdir('data/families_nogaps'):
+            if fam == fam_dir:
+                for seq in SeqIO.parse(f'data/families_nogaps/{fam_dir}/seqs.fa', 'fasta'):
+                    if seq.id not in seq_list:  # Add only if not already in list
+                        seqs.append((seq.id, str(seq.seq)))
+
+        # Randomly sample 150 sequences - embed and transform
+        sample_size = len(seqs) if len(seqs) < 150 else 150
+        seqs = sample(seqs, sample_size)
+        transforms = []
+        count = 0
+        for seq in seqs:
+            embed = Embedding(seq[0], seq[1], None)  #pylint: disable=E1136
+            embed.embed_seq(tokenizer, model, device, 'esm2', 17)
+            embed = Transform(seq[0], embed.embed[1], None)  #pylint: disable=E1136
+            embed.quant_2D(8, 75)
+            transforms.append(embed.trans[1])
+            if count > 3:
+                break
+            count += 1
+
+        # Find average value for each position in all transforms
+        transforms = np.mean(transforms, axis=0)
+        avg_dct = np.array([int(val) for val in transforms])
+
+        # Save avg_dct to file
+        np.save(f'{direc}/{fam}.npy', avg_dct)
+
+
 def main():
     """=============================================================================================
     Main function
     ============================================================================================="""
 
-    test_transforms()
+    test_full()
 
 
 if __name__ == '__main__':

@@ -42,20 +42,18 @@ def main():
     files.
     ============================================================================================="""
 
-    # Read Pfam-A.seed if it exists
-    if os.path.exists('data/Pfam-A.clans.tsv'):
-        pfam = 'data/Pfam-A.clans.tsv'
-    else:
+    # Read Pfam-A.clans if it exists
+    pfam_clans = 'data/Pfam-A.clans.tsv'
+    if not os.path.exists('data/Pfam-A.clans.tsv'):
         print('Pfam-A.seed not found. Downloading from Pfam...')
         if not os.path.exists('data'):
             os.mkdir('data')
         os.system('wget -P data ' \
             'https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.clans.tsv.gz')
         os.system('gunzip data/Pfam-A.clans.tsv.gz')
-        pfam = 'data/Pfam-A.clans.tsv'
 
     # Parse clans and save them as dict
-    read_pfam(pfam)
+    read_pfam(pfam_clans)
 
 
 if __name__ == '__main__':

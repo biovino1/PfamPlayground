@@ -20,7 +20,6 @@ def write_seq(seq_id: str, fam: str, seq: str):
 
     # Split seq_id for file name
     sid = seq_id.split('/')[0]
-    filename = sid.replace('>','')
     region = seq_id.split('/')[1]
 
     # Add newline characters to seq
@@ -28,17 +27,17 @@ def write_seq(seq_id: str, fam: str, seq: str):
     seq = '\n'.join(seq)
 
     # Write to file
-    with open(f'Data/full_seqs/{fam}/{filename}.fa', 'w', encoding='utf8') as file:
-        file.write(f'{sid}\t{region}\n{seq}')
+    with open(f'data/full_seqs/{fam}/seqs.fa', 'a', encoding='utf8') as file:
+        file.write(f'{sid}\t{region}\t{fam}\n{seq}\n')
 
 
-def parse_id(line: str) -> str:
+def parse_id(line: str) -> tuple:
     """=============================================================================================
     This function accepts an id line from the pfam fasta database and returns the sequence id and
     family name.
 
     :param line: single line from Pfam database file
-    :return: sequence id and family name
+    :return tuple: sequence id and family name
     ============================================================================================="""
 
     line = line.split()
@@ -69,8 +68,8 @@ def read_pfam(pfam: str):
 
                 # Get new seq id and family
                 seq_id, fam = parse_id(line)
-                if not os.path.exists(f'Data/full_seqs/{fam}'):
-                    os.mkdir(f'Data/full_seqs/{fam}')
+                if not os.path.exists(f'data/full_seqs/{fam}'):
+                    os.mkdir(f'data/full_seqs/{fam}')
                 seq = ''
                 continue
 
@@ -85,24 +84,22 @@ def main():
     files.
     ============================================================================================="""
 
-    # Read Pfam-A.seed if it exists
-    if os.path.exists('data/Pfam-A.fasta'):
-        pfam = 'data/Pfam-A.fasta'
-    else:
+    # Read Pfam-A.fasta if it exists
+    pfam_full = 'data/Pfam-A.fasta'
+    if not os.path.exists(pfam_full):
         print('Pfam-A.seed not found. Downloading from Pfam...')
         if not os.path.exists('data'):
             os.mkdir('data')
         os.system('wget -P data ' \
             'https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.fasta.gz')
         os.system('gunzip data/Pfam-A.fasta.gz')
-        pfam = 'data/Pfam-A.fasta'
 
     # Create directories for families
     if not os.path.exists('data/full_seqs'):
         os.mkdir('data/full_seqs')
 
     # Parse all fasta seqs
-    read_pfam(pfam)
+    read_pfam(pfam_full)
 
 
 if __name__ == '__main__':

@@ -72,6 +72,7 @@ def get_transform(seq: str, tokenizer, model, device: str, args: argparse.Namesp
     # Concatenate DCTs
     dct = Transform(query, None, None)
     for layer, tran in trans.items():
+        print(tran.trans[1].shape)
         dct.concat(tran.trans[1])
 
     return dct
@@ -175,12 +176,12 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/esm2_17_544_avg.npy')
+    parser.add_argument('-d', type=str, default='data/comb_dct.npy')
     parser.add_argument('-e', type=str, default='esm2')
-    parser.add_argument('-l', type=int, nargs='+', default=[17])
+    parser.add_argument('-l', type=int, nargs='+', default=[17, 25])
     parser.add_argument('-t', type=int, default=100)
-    parser.add_argument('-s1', type=int, nargs='+', default=[5])
-    parser.add_argument('-s2', type=int, nargs='+', default=[44])
+    parser.add_argument('-s1', type=int, nargs='+', default=[8, 7])
+    parser.add_argument('-s2', type=int, nargs='+', default=[75, 75])
     args = parser.parse_args()
 
     # Load tokenizer and encoder

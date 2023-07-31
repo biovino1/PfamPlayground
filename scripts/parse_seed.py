@@ -66,10 +66,10 @@ def write_fasta(family: str, seqs: list, gaps: bool, fam_dir: str):
                 line = line.split()
                 seq_id, region = line[0].split('/')[0], line[0].split('/')[1]
                 seq = clean_fasta(line[1], False, gaps)
-                file.write(f'>{seq_id}\t{region}\n{seq}\n')
+                file.write(f'>{seq_id}\t{region}\t{family}\n{seq}\n')
 
 
-def read_pfam(pfam: str, gaps: bool, fam_dir: str):
+def read_pfam(pfam: str, gaps: bool, fam_dir: str):  #\\NOSONAR
     """=============================================================================================
     This function accepts a pfam database file and parses individual sequence into a file for each
     sequence in each family. The files are stored in a directory named after the family.
@@ -114,30 +114,29 @@ def main():
     ============================================================================================="""
 
     # Read Pfam-A.seed if it exists
-    if os.path.exists('data/Pfam-A.seed'):
-        pfam = 'data/Pfam-A.seed'
-    else:
+    pfam_seed = 'data/Pfam-A.seed'
+    if not os.path.exists('data/Pfam-A.seed'):
         print('Pfam-A.seed not found. Downloading from Pfam...')
         if not os.path.exists('data'):
             os.mkdir('data')
         os.system('wget -P data ' \
              'https://ftp.ebi.ac.uk/pub/databases/Pfam/releases/Pfam35.0/Pfam-A.seed.gz')
         os.system('gunzip data/Pfam-A.seed.gz')
-        pfam = 'data/Pfam-A.seed'
 
     # Create directories for families
-    if not os.path.exists('data/families_gaps'):
-        os.mkdir('data/families_gaps')
-    if not os.path.exists('data/families_nogaps'):
-        os.mkdir('data/families_nogaps')
+    fam_gaps, fam_nogaps = 'data/families_gaps', 'data/families_nogaps'
+    if not os.path.exists(fam_gaps):
+        os.mkdir(fam_gaps)
+    if not os.path.exists(fam_nogaps):
+        os.mkdir(fam_nogaps)
 
     # Parse once with gaps and once without
     for gaps in [True, False]:
         if gaps is True:
-            fam_dir = 'data/families_gaps'
+            fam_dir = fam_gaps
         else:
-            fam_dir = 'data/families_nogaps'
-        read_pfam(pfam, gaps, fam_dir)
+            fam_dir = fam_nogaps
+        read_pfam(pfam_seed, gaps, fam_dir)
 
 
 if __name__ == "__main__":

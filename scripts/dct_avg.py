@@ -66,9 +66,9 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/esm2_18_embed', help='direc of embeds to avg')
-    parser.add_argument('-s1', type=int, default=4)
-    parser.add_argument('-s2', type=int, default=66)
+    parser.add_argument('-d', type=str, default='data/esm2_25_embed', help='direc of embeds to avg')
+    parser.add_argument('-s1', type=int, default=7)
+    parser.add_argument('-s2', type=int, default=75)
     args = parser.parse_args()
 
     dcts = []
