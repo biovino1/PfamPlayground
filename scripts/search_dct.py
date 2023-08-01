@@ -72,7 +72,6 @@ def get_transform(seq: str, tokenizer, model, device: str, args: argparse.Namesp
     # Concatenate DCTs
     dct = Transform(query, None, None)
     for layer, tran in trans.items():
-        print(tran.trans[1].shape)
         dct.concat(tran.trans[1])
 
     return dct

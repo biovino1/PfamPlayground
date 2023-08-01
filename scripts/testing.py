@@ -6,8 +6,8 @@ Ben Iovino  07/20/23   DCTDomain
 
 import logging
 import os
-import numpy as np
 from random import sample
+import numpy as np
 import torch
 from Bio import SeqIO
 from util import load_model, Embedding, Transform
@@ -86,13 +86,9 @@ def test_full():  #\\NOSONAR
     Before embedding make sure these these lines of code are in the main function of embed_pfam.py:
 
     with open('data/missed_families.txt', 'r', encoding='utf8') as f:
-        families = f.read().splitlines()
+        families = f.read().splitlines()[1:]
     families = [f'data/full_seqs/{fam.split(",")[0]}' for fam in families]
     ============================================================================================="""
-
-    # Direc for avg dcts
-    direc = 'data/full_embeds'
-    os.makedirs(direc, exist_ok=True)
 
     # Load tokenizer and encoder
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  #pylint: disable=E1101
@@ -104,6 +100,7 @@ def test_full():  #\\NOSONAR
     families = [f'{fam.split(",")[0]}' for fam in families][1:]
 
     # Read sequences from seed and full databases
+    dcts = []
     for fam in families:
         seqs = []
         for fam_dir in os.listdir('data/full_seqs'):
@@ -117,27 +114,28 @@ def test_full():  #\\NOSONAR
                     if seq.id not in seq_list:  # Add only if not already in list
                         seqs.append((seq.id, str(seq.seq)))
 
-        # Randomly sample 150 sequences - embed and transform
-        sample_size = len(seqs) if len(seqs) < 150 else 150
+        # Randomly sample sequences - embed and transform
+        sample_size = len(seqs) if len(seqs) < 500 else 500
         seqs = sample(seqs, sample_size)
         transforms = []
-        count = 0
         for seq in seqs:
             embed = Embedding(seq[0], seq[1], None)  #pylint: disable=E1136
             embed.embed_seq(tokenizer, model, device, 'esm2', 17)
             embed = Transform(seq[0], embed.embed[1], None)  #pylint: disable=E1136
-            embed.quant_2D(8, 75)
+            embed.quant_2D(8, 80)
             transforms.append(embed.trans[1])
-            if count > 3:
-                break
-            count += 1
 
         # Find average value for each position in all transforms
         transforms = np.mean(transforms, axis=0)
         avg_dct = np.array([int(val) for val in transforms])
+        dcts.append(Transform(fam, None, avg_dct).trans)
 
-        # Save avg_dct to file
-        np.save(f'{direc}/{fam}.npy', avg_dct)
+    # Save transforms to file
+    with open('data/full_dct.npy', 'wb') as emb:
+        np.save(emb, dcts)
+
+    # Search against full_dct.npy
+    os.system('python scripts/search_dct.py -d data/full_dct.npy -l 17 -s1 8 -s2 80')
 
 
 def main():

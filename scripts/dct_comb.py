@@ -29,6 +29,10 @@ def combine(files: list):
     dcts = []
     for fam, trans in trdict.items():
         dct = Transform(fam, None, None)
+
+        # If less transforms than files, skip
+        if len(trans) < len(files):
+            continue
         for tran in trans:
             dct.concat(tran)
         dcts.append(dct.trans)
