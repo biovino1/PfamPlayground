@@ -203,7 +203,10 @@ class Transform:
 
         dct = self.iDCT_quant(self.embed[1][1:len(self.embed[1])-1], n_dim)  #pylint: disable=W0621
         ddct = self.iDCT_quant(dct.T, m_dim).T
-        ddct = ddct.reshape(n_dim * m_dim)
+        try:
+            ddct = ddct.reshape(n_dim * m_dim)
+        except ValueError:  # If embedding is too small to transform
+            self.trans[1] = None
         self.trans[1] = (ddct*127).astype('int8')
 
 

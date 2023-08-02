@@ -123,7 +123,8 @@ def test_full():  #\\NOSONAR
             embed.embed_seq(tokenizer, model, device, 'esm2', 17)
             embed = Transform(seq[0], embed.embed[1], None)  #pylint: disable=E1136
             embed.quant_2D(8, 80)
-            transforms.append(embed.trans[1])
+            if embed.trans[1] is not None:
+                transforms.append(embed.trans[1])
 
         # Find average value for each position in all transforms
         transforms = np.mean(transforms, axis=0)

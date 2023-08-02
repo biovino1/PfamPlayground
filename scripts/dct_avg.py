@@ -48,11 +48,7 @@ def transform_avgs(
 
     # Perform idct on avg_embed
     avg_embed = Transform(fam, np.array(avg_embed), None)
-    try:
-        avg_embed.quant_2D(args.s1, args.s2)
-    except ValueError:  # If embedding is too small to transform
-        logging.info('ValueError for %s', fam)
-        return None
+    avg_embed.quant_2D(args.s1, args.s2)
 
     return avg_embed
 
@@ -85,7 +81,7 @@ def main():
 
         # Transform each average embedding and store in list
         avg_dct = transform_avgs(fam, positions, embeddings, args)
-        if avg_dct is not None:
+        if avg_dct.trans[1] is not None:
             dcts.append(avg_dct.trans)
 
     # Save all dcts to file

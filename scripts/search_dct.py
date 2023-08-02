@@ -62,10 +62,9 @@ def get_transform(seq: str, tokenizer, model, device: str, args: argparse.Namesp
     trans = {}
     for i, layer in enumerate(args.l):
         embed = embed_query(seq, tokenizer, model, device, args.e, layer)
-        try:
-            embed = Transform(query, np.array(embed), None)
-            embed.quant_2D(args.s1[i], args.s2[i])
-        except ValueError:  # Some sequences are too short to transform
+        embed = Transform(query, np.array(embed), None)
+        embed.quant_2D(args.s1[i], args.s2[i])
+        if embed.trans[1] is None:  # Skip if DCT is None
             return None  #\\NOSONAR
         trans[layer] = embed
 
@@ -175,12 +174,12 @@ def main():
     ============================================================================================="""
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/comb_dct.npy')
+    parser.add_argument('-d', type=str, default='data/esm2_17_650_avg.npy')
     parser.add_argument('-e', type=str, default='esm2')
-    parser.add_argument('-l', type=int, nargs='+', default=[17, 25])
+    parser.add_argument('-l', type=int, nargs='+', default=[17])
     parser.add_argument('-t', type=int, default=100)
-    parser.add_argument('-s1', type=int, nargs='+', default=[8, 7])
-    parser.add_argument('-s2', type=int, nargs='+', default=[75, 75])
+    parser.add_argument('-s1', type=int, nargs='+', default=[6])
+    parser.add_argument('-s2', type=int, nargs='+', default=[50])
     args = parser.parse_args()
 
     # Load tokenizer and encoder
@@ -204,6 +203,8 @@ def main():
         seq_file = f'{direc}/{fam}/{query}'
         query = get_transform(seq_file, tokenizer, model, device, args)
         if query is None:
+            logging.info('%s\n%s\nQuery was too small for transformation dimensions',
+                          datetime.datetime.now(), query)
             continue
 
         # Search idct embeddings and analyze results
