@@ -1,9 +1,9 @@
-"""================================================================================================
-This script defines the embedding class, which is used to embed protein sequences using the
+"""This script defines the embedding class, which is used to embed protein sequences using the
 ProtT5_XL_UniRef50 and ESM-2_t36_3B models and transform them to DCT vectors.
 
-Ben Iovino  07/21/23   SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "07/21/23"
+"""
 
 import re
 import esm
@@ -14,14 +14,13 @@ from transformers import T5EncoderModel, T5Tokenizer
 
 
 def load_model(encoder: str, device: str) -> tuple:
-    """=============================================================================================
-    This function loads the desired encoder model and tokenizer and returns them. Outside of
+    """This function loads the desired encoder model and tokenizer and returns them. Outside of
     embedding class so it can be loaded once per script, much faster.
 
     :param encoder: prott5 or esm2
     :param device: cpu or gpu
     :return tuple: tokenizer and model
-    ============================================================================================="""
+    """
 
     # ProtT5_XL_UniRef50
     if encoder == 'prott5':
@@ -40,32 +39,29 @@ def load_model(encoder: str, device: str) -> tuple:
 
 
 class Embedding:
-    """============================================================================================
-    This class stores embeddings for a single protein sequence.
-    ============================================================================================"""
+    """This class stores embeddings for a single protein sequence.
+    """
 
 
     def __init__(self, seqid: str, seq: str, embed: None):
-        """=========================================================================================
-        Defines embedding class, which is a protein id, sequence, and embedding.
+        """Defines embedding class, which is a protein id, sequence, and embedding.
 
         :param seqid: protein ID
         :param seq: protein sequence
         :param embed: embedding (n x m matrix), not initialized by default
-        ========================================================================================="""
+        """
 
         self.seq = np.array([seqid, seq], dtype=object)
         self.embed = np.array([seqid, embed], dtype=object)
 
 
     def clean_seq(self):
-        """=========================================================================================
-        This function accepts a protein sequence and returns it after removing special characters,
+        """This function accepts a protein sequence and returns it after removing special characters,
         gaps and converting all characters to uppercase.
 
         :param self: protein sequence
         :return self: protein sequence
-        ========================================================================================="""
+        """
 
         self.seq[1] = re.sub(r"[UZOB]", "X", self.seq[1]).upper()
         self.seq[1] = re.sub(r"\.", "", self.seq[1])  #//NOSONAR
@@ -73,14 +69,13 @@ class Embedding:
 
 
     def prot_t5xl_embed(self, tokenizer, model, device):
-        """=========================================================================================
-        This function accepts a protein sequence and returns its embedding, each vector representing
+        """This function accepts a protein sequence and returns its embedding, each vector representing
         a single amino acid using RostLab's ProtT5_XL_UniRef50 model.
 
         :param seq: protein ID and sequence
         :param model: dict containing tokenizer and encoder
         :param device: gpu/cpu
-        ========================================================================================="""
+        """
 
         # Tokenize, encode, and load sequence
         self.clean_seq()
@@ -103,8 +98,7 @@ class Embedding:
 
 
     def esm2_embed(self, tokenizer, model, device: str, layer: int):
-        """=========================================================================================
-        This function accepts a protein sequence and returns a list of vectors, each vector
+        """This function accepts a protein sequence and returns a list of vectors, each vector
         representing a single amino acid using Facebook's ESM-2 model.
 
         :param seq: protein ID and sequence
@@ -112,7 +106,7 @@ class Embedding:
         :param model: encoder model
         :param device: gpu/cpu
         return: list of vectors
-        ========================================================================================="""
+        """
 
         # Embed sequences
         self.seq[1] = self.seq[1].upper()  # tok does not convert to uppercase
@@ -126,8 +120,7 @@ class Embedding:
 
 
     def embed_seq(self, tokenizer, model, device: str, encoder: str, layer: int):
-        """=========================================================================================
-        This function accepts a protein id and its sequence and returns its embedding, each vector
+        """This function accepts a protein id and its sequence and returns its embedding, each vector
         representing a single amino acid using the provided tokenizer and encoder.
 
         :param tokenizer: tokenizer
@@ -135,7 +128,7 @@ class Embedding:
         :param device: gpu/cpu
         :param encoder: prott5 or esm2
         :param layer: layer to extract features from (if using esm2)
-        ========================================================================================="""
+        """
 
         # ProtT5_XL_UniRef50 or ESM-2_t36_3B
         if encoder == 'prott5':
@@ -145,31 +138,28 @@ class Embedding:
 
 
 class Transform:
-    """============================================================================================
-    This class stores inverse discrete cosine transforms (iDCT) for a single protein sequence.
-    ============================================================================================"""
+    """This class stores inverse discrete cosine transforms (iDCT) for a single protein sequence.
+    """
 
 
     def __init__(self, seqid: str, embed: np.ndarray, transform: None):
-        """=========================================================================================
-        Defines transform class, which is a protein id, embedding, and transform.
+        """Defines transform class, which is a protein id, embedding, and transform.
 
         :param seqid: protein ID
         :param embed: embedding (n x m matrix)
         :param transform: transform (n*m 1D array), not initialized by default
-        ========================================================================================="""
+        """
 
         self.embed = np.array([seqid, embed], dtype=object)
         self.trans = np.array([seqid, transform], dtype=object)
 
 
     def scale(self, vec: np.ndarray) -> np.ndarray:
-        """=========================================================================================
-        Scale from protsttools. Takes a vector and returns it scaled between 0 and 1.
+        """Scale from protsttools. Takes a vector and returns it scaled between 0 and 1.
 
         :param v: vector to be scaled
         :return: scaled vector
-        ========================================================================================="""
+        """
 
         maxi = np.max(vec)
         mini = np.min(vec)
@@ -177,13 +167,12 @@ class Transform:
 
 
     def iDCT_quant(self, vec: np.ndarray, num: int) -> np.ndarray:
-        """=========================================================================================
-        iDCTquant from protsttools. Takes a vector and returns its iDCT.
+        """iDCTquant from protsttools. Takes a vector and returns its iDCT.
 
         :param vec: vector to be transformed
         :param num: number of coefficients to keep
         :return: transformed vector
-        ========================================================================================="""
+        """
 
         f = dct(vec.T, type=2, norm='ortho')
         trans = idct(f[:,:num], type=2, norm='ortho')  #pylint: disable=E1126
@@ -193,29 +182,27 @@ class Transform:
 
 
     def quant_2D(self, n_dim: int, m_dim: int):
-        """=========================================================================================
-        quant2D from protsttools. Takes an embedding and returns its iDCT on both axes.
+        """quant2D from protsttools. Takes an embedding and returns its iDCT on both axes.
 
         :param emb: embedding to be transformed (n x m array)
         :param n_dim: number of coefficients to keep on first axis
         :param m_dim: number of coefficients to keep on second axis
-        ========================================================================================="""
+        """
 
         dct = self.iDCT_quant(self.embed[1][1:len(self.embed[1])-1], n_dim)  #pylint: disable=W0621
         ddct = self.iDCT_quant(dct.T, m_dim).T
         try:
             ddct = ddct.reshape(n_dim * m_dim)
+            self.trans[1] = (ddct*127).astype('int8')
         except ValueError:  # If embedding is too small to transform
             self.trans[1] = None
-        self.trans[1] = (ddct*127).astype('int8')
 
 
     def concat(self, vec: np.ndarray):
-        """=========================================================================================
-        Concatenates a vector to the transform.
+        """Concatenates a vector to the transform.
 
         :param vec: vector to be added to transform
-        ========================================================================================="""
+        """
 
         transform = self.trans[1]
         if transform is None:  # Initialize transform if empty
