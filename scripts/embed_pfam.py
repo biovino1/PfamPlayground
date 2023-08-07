@@ -1,8 +1,8 @@
-"""================================================================================================
-This script embeds all of the sequences from Pfam and saves them as numpy arrays.
+"""This script embeds all of the sequences from Pfam and saves them as numpy arrays.
 
-Ben Iovino  05/08/23   SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "05/08/23"
+"""
 
 import argparse
 import logging
@@ -19,12 +19,11 @@ logging.basicConfig(filename=log_filename, filemode='w',
 
 
 def load_seqs(file: str) -> list:
-    """=============================================================================================
-    This function takes a fasta file and returns a list of sequences and their IDs.
+    """Returns a list of sequences and their IDs froma fasta file.
 
     :param file: fasta file
     :return list: list of sequences
-    ============================================================================================="""
+    """
 
     # Read each line and add to list
     seqs = []
@@ -36,17 +35,14 @@ def load_seqs(file: str) -> list:
 
 
 def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
-    """=============================================================================================
-    This function accepts a directory that contains a fasta file of protein sequences and embeds
-    each sequence using the provided tokenizer and encoder. All of the family's embeddings are
-    saved as a single numpy array.
+    """Embeds a directory of fasta files and saves the embeddings to a single file.
 
     :param path: directory containing fasta files
     :param tokenizer: tokenizer
     :param model: encoder model
     :param device: gpu/cpu
     :param args: directory to store embeddings and encoder type
-    ============================================================================================="""
+    """
 
     # Get last directory in path
     fam = path.rsplit('/', maxsplit=1)[-1]
@@ -80,10 +76,9 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
 
 
 def main():
-    """=============================================================================================
-    Main loads the tokenizer and encoder models and calls embed_fam() to embed all sequences in each
-    family directory from Pfam.
-    ============================================================================================="""
+    """Main loads the tokenizer and encoder models and calls embed_fam() to embed all sequences in
+    each family directory from Pfam.
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='data')

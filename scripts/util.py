@@ -14,12 +14,12 @@ from transformers import T5EncoderModel, T5Tokenizer
 
 
 def load_model(encoder: str, device: str) -> tuple:
-    """This function loads the desired encoder model and tokenizer and returns them. Outside of
-    embedding class so it can be loaded once per script, much faster.
+    """Loads and returns tokenizer and encoder. Outside of embedding class so it can be loaded
+    once per script, much faster.
 
     :param encoder: prott5 or esm2
     :param device: cpu or gpu
-    :return tuple: tokenizer and model
+    :return: tuple containing tokenizer and model
     """
 
     # ProtT5_XL_UniRef50
@@ -56,11 +56,10 @@ class Embedding:
 
 
     def clean_seq(self):
-        """This function accepts a protein sequence and returns it after removing special characters,
-        gaps and converting all characters to uppercase.
+        """Returns a protein sequence after removing special characters, gaps and converting
+        all characters to uppercase.
 
-        :param self: protein sequence
-        :return self: protein sequence
+        :param self: protein ID and sequence
         """
 
         self.seq[1] = re.sub(r"[UZOB]", "X", self.seq[1]).upper()
@@ -68,9 +67,9 @@ class Embedding:
         self.seq[1] = [' '.join([*self.seq[1]])]
 
 
-    def prot_t5xl_embed(self, tokenizer, model, device):
-        """This function accepts a protein sequence and returns its embedding, each vector representing
-        a single amino acid using RostLab's ProtT5_XL_UniRef50 model.
+    def prot_t5xl_embed(self, tokenizer, model, device: str):
+        """Returns embedding of a protein sequence. Each vector represents a single amino
+        acid using RostLab's ProtT5_XL_UniRef50 model.
 
         :param seq: protein ID and sequence
         :param model: dict containing tokenizer and encoder
@@ -98,8 +97,8 @@ class Embedding:
 
 
     def esm2_embed(self, tokenizer, model, device: str, layer: int):
-        """This function accepts a protein sequence and returns a list of vectors, each vector
-        representing a single amino acid using Facebook's ESM-2 model.
+        """Returns embedding of a protein sequence. Each vector represents a single amino
+        acid using Facebook's ESM2 model.
 
         :param seq: protein ID and sequence
         :param tokenizer: tokenizer
@@ -120,8 +119,7 @@ class Embedding:
 
 
     def embed_seq(self, tokenizer, model, device: str, encoder: str, layer: int):
-        """This function accepts a protein id and its sequence and returns its embedding, each vector
-        representing a single amino acid using the provided tokenizer and encoder.
+        """Returns embedding of a protein sequence.
 
         :param tokenizer: tokenizer
         :param model: encoder model

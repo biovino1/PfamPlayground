@@ -1,9 +1,9 @@
-"""================================================================================================
-This script takes embeddings from a directory and determines positions that are highly similar to
+"""This script takes embeddings from a directory and determines positions that are highly similar to
 the consensus embedding.
 
-Ben Iovino  05/19/23   SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "05/19/23"
+"""
 
 import argparse
 import logging
@@ -20,15 +20,13 @@ logging.basicConfig(filename=log_filename, filemode='w',
 
 
 def embed_pos(positions: dict, embeddings: dict) -> dict:
-    """=============================================================================================
-    This function accepts a dictionary of positions that are included in the consensus sequence and
-    a dictionary of embeddings. It returns a list of vectors that correspond to the consensus
-    positions.
+    """Returns a dictionary of embeddings corresponding to positions in the consensus sequence
+    of a Pfam family.
 
     :param positions: dict where seq id is key with list of positions as value
     :param embeddings: dict where seq id is key with list of embeddings as value
-    :return dict: dict where position is key with list of embeddings as value
-    ============================================================================================="""
+    :return: dict where position is key with list of embeddings as value
+    """
 
     # Create a dict of lists where each list contains the embeddings for a position in the consensus
     seq_embed = {}
@@ -50,15 +48,13 @@ def embed_pos(positions: dict, embeddings: dict) -> dict:
 
 
 def get_cos_sim(family: str, embeddings: dict) -> list:
-    """=============================================================================================
-    This function accepts a dictionary of embeddings corresponding to positions in the consensus
-    sequence and returns a dictionary of cosine similarities between the average embedding and each
-    embedding for that position.
+    """Returns a dictionary of cosine similarities between the average embedding and each
+    individual embedding for that position.
 
     :param family: name of Pfam family
     :param embeddings: dict where position is key with list of embeddings from each seq as value
-    :return list: list of average cosine similarities for each position
-    ============================================================================================="""
+    :return: list of average cosine similarities for each position
+    """
 
     # Get average embedding
     avg_embed = np.load(f'data/avg_embed/{family}/avg_embed.npy')
@@ -82,14 +78,12 @@ def get_cos_sim(family: str, embeddings: dict) -> list:
 
 
 def plot_regions(family: str, cos_sim: dict, avg_cos: list):
-    """=============================================================================================
-    This function accepts a dictionary of cosine similarities and a list of their average values and
-    plots the variance and cosine similarity for each position.
+    """Plots the variance and cosine similarity between the average embedding and each position.
 
     :param family: name of Pfam family
     :param cos_sim: dict where position is key with list of embeddings from each seq as value
     :param avg_cos: list of average cosine similarities for each position
-    ============================================================================================="""
+    """
 
     # Find inverse of variance for each position
     var = []
@@ -117,13 +111,13 @@ def plot_regions(family: str, cos_sim: dict, avg_cos: list):
 
 
 def filter_regions(regions: dict, filt_length: int) -> dict:
-    """=============================================================================================
-    This function accepts a dictionary of regions and returns a filtered dictionary of regions.
+    """Returns a filtered dictionary of regions where regions that are too close to other regions
+    are removed.
 
     :param regions: dict where region is key with list of positions and average cosine similarity
     :param filt_length: closest distance between regions
-    :return dict: region is key with list of positions and average cosine similarity as value
-    ============================================================================================="""
+    :return: region is key with list of positions and average cosine similarity as value
+    """
 
     # Sort by average cosine similarity, highest to lowest
     regions = dict(sorted(regions.items(), key=lambda item: item[1][2], reverse=True))
@@ -176,17 +170,16 @@ def filter_regions(regions: dict, filt_length: int) -> dict:
 
 
 def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict:
-    """=============================================================================================
-    This function accepts list of cosine similarities and returns a dictionary of regions, each one
-    being consecutive positions with relatively high cosine similarity. A region is defined as
-    having at least 2 positions with cosine similarity greater than the mean plus one standard
-    deviation, or lower if not enough regions are found.
+    """Returns a dictionary of regions, each one being consecutive positions with relatively
+    high cosine similarity. A region is defined as having at least 2 positions with cosine
+    similarity greater than the mean plus one standard deviation, or lower if not enough
+    regions are found.
 
     :param avg_cos: list of average cosine similarities for each position
     :param num_anchors: number of anchor residues to find
     :param filt_length: closest distance between regions
-    :return dict: region is key with list of positions and average cosine similarity as value
-    ============================================================================================="""
+    :return: dict where key with list of positions and average cosine similarity as value
+    """
 
     # Find continuous regions (>= 2 positions) of relatively high cosine similarity
     regions = {}
@@ -234,13 +227,11 @@ def determine_regions(avg_cos: list, num_anchors: int, filt_length: int) -> dict
 
 
 def get_anchors(family: str, regions: dict):
-    """=============================================================================================
-    This function accepts a family to load the average embedding and a dict of regions and writes to
-    a file the anchor embeddings for each region.
+    """Writes the anchor residues (embeddings) for each family to a file.
 
     :param family: name of Pfam family
     :param regions: dict where region is key with list of positions and average cosine similarity
-    ============================================================================================="""
+    """
 
     # Get average embedding
     avg_embed = np.load(f'data/avg_embed/{family}/avg_embed.npy')
@@ -269,10 +260,9 @@ def get_anchors(family: str, regions: dict):
 
 
 def main():
-    """=============================================================================================
-    Main goes through each family that has embeddings and finds anchor residues for each family
+    """Main goes through each family that has embeddings and finds anchor residues for each family
     based on cosine similarity to the average embedding.
-    ============================================================================================="""
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', type=int, help='Number of anchor residues to find', default=3)

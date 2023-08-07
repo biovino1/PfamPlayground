@@ -1,9 +1,9 @@
-"""================================================================================================
-This script takes a query sequence and a database of dct vectors and outputs the most similar dct
+"""This script takes a query sequence and a database of dct vectors and outputs the most similar dct
 vectors along with their similarity scores.
 
-Ben Iovino  07/05/23   SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "07/05/23"
+"""
 
 import argparse
 import datetime
@@ -25,9 +25,7 @@ logging.basicConfig(filename=log_filename, filemode='w',
 
 def embed_query(
     sequence: str, tokenizer, model, device: str, encoder: str, layer: int) -> np.ndarray:
-    """=============================================================================================
-    This function loads a query sequence from file and embeds it using the provided tokenizer and
-    encoder.
+    """Returns the embedding of a fasta sequence.
 
     :param sequence: path to fasta file containing query sequence
     :param tokenizer: tokenizer
@@ -35,8 +33,8 @@ def embed_query(
     :param device: cpu or gpu
     :param encoder: prott5 or esm2
     :param layer: layer to extract features from (if using esm2)
-    :return Embedding: embedding of query sequence
-    ============================================================================================="""
+    :return: embedding of query sequence
+    """
 
     # Get seq from file
     seq = ()
@@ -52,10 +50,15 @@ def embed_query(
 
 
 def get_transform(seq: str, tokenizer, model, device: str, args: argparse.Namespace) -> Transform:
-    """=============================================================================================
-    This function takes a query sequence and transform it into a dct representation based on the
-    given arguments.
-    ============================================================================================="""
+    """Returns the DCT of an embedded fasta sequence.
+
+    :param seq: path to fasta file containing query sequence
+    :param tokenizer: tokenizer
+    :param model: encoder model
+    :param device: cpu or gpu
+    :param args: argparse.Namespace object containing arguments
+    :return: Transform object containing dct representation of query sequence
+    """
 
     # Get DCT for each layer
     query = '/'.join(seq.split('/')[2:])
@@ -77,17 +80,16 @@ def get_transform(seq: str, tokenizer, model, device: str, args: argparse.Namesp
 
 
 def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, fam: str, metric: str) -> dict:
-    """=============================================================================================
-    This function takes a dct vector (1D array) and a query dct vector (1D array) and finds the
-    similarity between the two vectors
+    """Finds the similarity between two arrays and returns a dictionary of similarities between
+    database and query vectors.
 
     :param dct: dct vector of sequence from database
     :param query: dct vector of embedded query sequence
     :param sims: dictionary of similarities between dct and query vectors
     :param fam: name of dct sequence
     :param metric: similarity metric
-    :return float: updated dictionary
-    ============================================================================================="""
+    :return: updated dict of similarities between dct and query vectors
+    """
 
     # Cosine similarity between dct and query embedding
     if metric == 'cosine':
@@ -104,16 +106,15 @@ def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, fam: str, metric: 
 
 
 def query_search(query: np.ndarray, search_db: np.ndarray, results: int, metric: str) -> dict:
-    """=============================================================================================
-    This function takes a query embedding, a directory of dct embeddings, and returns a dict
-    of the top n most similar dct embeddings.
+    """Returns the top n results from searching a query sequence against a database of dct vectors.
 
     :param query: embedding of query sequence
     :param search_db: np array of dct embeddings
     :param results: number of results to return
     :param metric: similarity metric
-    :return top_sims: dict where keys are dct embeddings and values are similarity scores
-    ============================================================================================="""
+
+    :return: dict where keys are dct embeddings and values are similarity scores
+    """
 
     # Search query against every dct embedding
     sims = {}
@@ -132,13 +133,13 @@ def query_search(query: np.ndarray, search_db: np.ndarray, results: int, metric:
 
 
 def search_results(query: str, results: dict) -> dict:
-    """=============================================================================================
-    This function compares a query sequence to a dictionary of results.
+    """Returns a dict of counts for matches, top n results, and same clan for all queries in a
+    search.
 
     :param query: query sequence
     :param results: dictionary of results from searching query against dcts
-    :return counts: dictionary of counts for matches, top n results, and same clan
-    ============================================================================================="""
+    :return: dict of counts for matches, top n results, and same clan
+    """
 
     # Log time and similarity for top 5 results
     logging.info('%s\n%s', datetime.datetime.now(), query)
@@ -168,18 +169,17 @@ def search_results(query: str, results: dict) -> dict:
 
 
 def main():
-    """=============================================================================================
-    Main function loads tokenizer and model, randomly samples a query sequence from a family, embeds
+    """Main function loads tokenizer and model, randomly samples a query sequence from a family, embeds
     and transforms the query, searches the query against DCT vectors, and logs the results
-    ============================================================================================="""
+    """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/esm2_17_650_avg.npy')
+    parser.add_argument('-d', type=str, default='data/full_dct/full_dct.npy')
     parser.add_argument('-e', type=str, default='esm2')
     parser.add_argument('-l', type=int, nargs='+', default=[17])
     parser.add_argument('-t', type=int, default=100)
-    parser.add_argument('-s1', type=int, nargs='+', default=[6])
-    parser.add_argument('-s2', type=int, nargs='+', default=[50])
+    parser.add_argument('-s1', type=int, nargs='+', default=[8])
+    parser.add_argument('-s2', type=int, nargs='+', default=[80])
     args = parser.parse_args()
 
     # Load tokenizer and encoder

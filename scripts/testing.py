@@ -82,7 +82,7 @@ def get_seqs(fam: str, direc: str, seqs: list) -> list:
     :param fam: family name
     :param dir: directory containing a singular fasta file
     :param seqs: list of sequences
-    :return list: list of sequences
+    :return: list of sequences
     """
 
     for fam_dir in os.listdir(direc):
@@ -148,10 +148,23 @@ def test_full():
         logging.info('Averaging %s', fam)
         transforms = np.mean(transforms, axis=0, dtype=int)
         avg_dct = np.array([int(val) for val in transforms])
+        avg_dct = Transform(fam, None, avg_dct)
 
         # Save avg transform to file
         with open(f'data/full_dct/{fam}.npy', 'wb') as emb:
-            np.save(emb, avg_dct)
+            np.save(emb, avg_dct.trans)
+
+    # Combine all avg transforms into one file
+    avg_dcts = []
+    for fam in families:
+        if f'{fam}.npy' in os.listdir('data/full_dct'):
+            with open(f'data/full_dct/{fam}.npy', 'rb') as emb:
+                avg_dcts.append(np.load(emb, allow_pickle=True))
+    with open('data/full_dct/full_dct.npy', 'wb') as emb:
+        np.save(emb, avg_dcts)
+
+    # Search against full pfam db
+    os.system('python scripts/search_dct.py -d data/full_dct/full_dct.npy -l 17 -s1 8 -s2 80')
 
 
 def main():

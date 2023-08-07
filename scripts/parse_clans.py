@@ -1,9 +1,9 @@
-"""================================================================================================
-This script parses each sequence in the Pfam-A.seed database and creates a fasta file for each
+"""This script parses each sequence in the Pfam-A.seed database and creates a fasta file for each
 sequence in the family. The fasta files are stored in a directory named after the family.
 
-Ben Iovino  06/05/23   SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "06/05/23"
+"""
 
 import csv
 import pickle
@@ -11,12 +11,11 @@ import os
 
 
 def read_pfam(pfam: str):
-    """=============================================================================================
-    This function accepts a pfam database file and parses it into a dictionary. Each key is a
-    clan and its value is a list of families in that clan. The dict is saved as a pickle file.
+    """Writes a dictionary to a file where the key is the Pfam clan and the value is a list of
+    families in that clan.
 
     :param pfam: Pfam database file
-    ============================================================================================="""
+    """
 
     # Read clans db with csv reader
     clans = {}
@@ -36,11 +35,10 @@ def read_pfam(pfam: str):
 
 
 def main():
-    """=============================================================================================
-    Main detects if Pfam-A.full database is in directory. If not, it will download from Pfam
+    """Main detects if Pfam-A.full database is in directory. If not, it will download from Pfam
     website and unzip. Then, it will call read_pfam to parse each family into individual fasta
     files.
-    ============================================================================================="""
+    """
 
     # Read Pfam-A.clans if it exists
     pfam_clans = 'data/Pfam-A.clans.tsv'

@@ -1,22 +1,20 @@
-"""================================================================================================
-This script parses each sequence in the Pfam-A.full database and creates a fasta file for each
+"""This script parses each sequence in the Pfam-A.full database and creates a fasta file for each
 sequence in the family. The fasta files are stored in a directory named after the family.
 
-Ben Iovino  06/05/23   SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "06/05/23"
+"""
 
 import os
 
 
 def write_seq(seq_id: str, fam: str, seq: str):
-    """=============================================================================================
-    This function accepts a sequence id, the family it belongs to, and the fasta sequence. It writes
-    the sequence to a file in the directory named after the family.
+    """Writes the sequence to a file in the directory named after the family.
 
     :param seq_id: sequence id
     :param fam: family name
     :param seq: fasta sequence
-    ============================================================================================="""
+    """
 
     # Split seq_id for file name
     sid = seq_id.split('/')[0]
@@ -32,13 +30,11 @@ def write_seq(seq_id: str, fam: str, seq: str):
 
 
 def parse_id(line: str) -> tuple:
-    """=============================================================================================
-    This function accepts an id line from the pfam fasta database and returns the sequence id and
-    family name.
+    """Returns sequence ID and family name of a sequence from Pfam database file.
 
     :param line: single line from Pfam database file
     :return tuple: sequence id and family name
-    ============================================================================================="""
+    """
 
     line = line.split()
     seq_id = line[0]  # Seq id and region
@@ -48,12 +44,10 @@ def parse_id(line: str) -> tuple:
 
 
 def read_pfam(pfam: str):
-    """=============================================================================================
-    This function accepts a pfam database file and parses individual sequences into a file for each
-    sequence in each family. The files are stored in a directory named after the family.
+    """Writes each sequence in Pfam-A.full database to a fasta file corresponding to the family.
 
     :param pfam: Pfam database file
-    ============================================================================================="""
+    """
 
     seq_id, fam, seq = '', '', ''
     with open(pfam, 'r', encoding='utf8', errors='replace') as file:
@@ -78,11 +72,10 @@ def read_pfam(pfam: str):
 
 
 def main():
-    """=============================================================================================
-    Main detects if Pfam-A.full database is in directory. If not, it will download from Pfam
+    """Main detects if Pfam-A.full database is in directory. If not, it will download from Pfam
     website and unzip. Then, it will call read_pfam to parse each family into individual fasta
     files.
-    ============================================================================================="""
+    """
 
     # Read Pfam-A.fasta if it exists
     pfam_full = 'data/Pfam-A.fasta'

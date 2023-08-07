@@ -1,9 +1,9 @@
-"""================================================================================================
-This script averages all embeddings for each Pfam family and saves the average embedding as a numpy
-array in a new directory.
+"""This script averages all embeddings for each Pfam family and saves the average embedding as
+a numpy array in a new directory.
 
-Ben Iovino  05/12/23   SearchEmb
-================================================================================================"""
+__author__= "Ben Iovino"
+__date__ = "05/12/23"
+"""
 
 import argparse
 import os
@@ -13,12 +13,11 @@ from Bio import SeqIO
 
 
 def get_seqs(family: str) -> dict:
-    """=============================================================================================
-    This function accepts a family name and returns a dictionary of sequences in the family.
+    """Returns a dictionary of sequences for a given Pfam family.
 
     :param family: name of Pfam family
-    :return dict: seq id is key with sequence as value
-    ============================================================================================="""
+    :return: seq id is key with sequence as value
+    """
 
     sequences = {}
     with open(f'data/families_gaps/{family}/seqs.fa', 'r', encoding='utf8') as file:
@@ -29,13 +28,12 @@ def get_seqs(family: str) -> dict:
 
 
 def cons_pos(sequences: dict) -> dict:
-    """=============================================================================================
-    This function accepts a a dictionary of sequences, one of the sequences being a consensus. It
-    returns a dict with the positions that are included in the consensus for each sequence.
+    """It returns a dict with the positions that are included in the consensus for each sequence
+    in a dictionary.
 
     :param sequences: dictionary of sequences
-    :return dict: seq id is key with list of positions as value
-    ============================================================================================="""
+    :return: seq id is key with list of positions as value
+    """
 
     # Get consensus sequence and remove it so it is not compared to itself
     cons_seq = sequences['consensus']
@@ -54,14 +52,13 @@ def cons_pos(sequences: dict) -> dict:
 
 
 def get_embed(direc: str, sequences: dict) -> dict:
-    """=============================================================================================
-    This function accepts a directory of fasta seqs and a dictionary of sequences that arelocated in
-    that directory. It returns a dictionary of embeddings corresponding to the consensus positions.
+    """Returns a dictionary of embeddings corresponding to the consensus positions for
+    each sequence.
 
     :param family: name of Pfam family
     :param sequences: dict where seq id is key with sequence as value
-    :return dict: seq id is key with list of embeddings as value
-    ============================================================================================="""
+    :return: dict where seq id is key with list of embeddings as value
+    """
 
     # Load embeddings from file
     embeddings = {}
@@ -87,15 +84,13 @@ def get_embed(direc: str, sequences: dict) -> dict:
 
 
 def average_embed(family: str, positions: dict, embeddings: dict):
-    """=============================================================================================
-    This function accepts a dictionary of positions that are included in the consensus sequence and
-    a dictionary of embeddings. It saves a list of vectors that represents the average embedding
-    for each position in the consensus sequence.
+    """Saves a list of vectors that represents the average embedding for each
+    position in the consensus sequence for each Pfam family.
 
     :param family: name of Pfam family
     :param sequences: dict where seq id is key with sequence as value
     :param positions: dict where seq id is key with list of positions as value
-    ============================================================================================="""
+    """
 
     # Create a dict of lists where each list contains the embeddings for a position in the consensus
     seq_embed = {}
@@ -121,11 +116,10 @@ def average_embed(family: str, positions: dict, embeddings: dict):
 
 
 def main():
-    """=============================================================================================
-    Main goes through each Pfam family and calls get_seqs() to get protein sequences, cons_pos() to
-    get the consensus sequence positions, get_embed() to get the embeddings for each sequence, and
-    average_embed() to average the embeddings and save them to file.
-    ============================================================================================="""
+    """Main goes through each Pfam family and calls get_seqs() to get protein sequences, cons_pos()
+    to get the consensus sequence positions, get_embed() to get the embeddings for each sequence,
+    and average_embed() to average the embeddings and save them to file.
+    """
 
     # Put log in main because other scripts call functions from this script and will log incorrectly
     log_filename = 'data/logs/embed_avg.log'  #pylint: disable=C0103

@@ -1,24 +1,22 @@
-"""================================================================================================
-This script parses each family in the Pfam-A.seed database and creates a fasta file for each
+"""This script parses each family in the Pfam-A.seed database and creates a fasta file for each
 sequence in the family. The fasta files are stored in a directory named after the family.
 
-Ben Iovino  05/01/23   SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "05/01/23"
+"""
 
 import os
 import regex as re
 
 
 def clean_fasta(seq: str, cons: bool, gaps: bool) -> str:
-    """=============================================================================================
-    This function accepts a fasta sequence with gaps and returns it in fasta format (newline char
-    every 50 characters).
+    """Returns fasta sequence as a string with newline characters every 50 chars.
 
     :param seq: fasta sequence
-    :param cons: flag to indicate if sequence is consensus sequence
-    :param gaps: flag to indicate if gaps should be included in sequences
-    :return str: fasta sequence with newline characters
-    ============================================================================================="""
+    :param cons: bool to indicate if sequence is consensus sequence
+    :param gaps: bool to indicate if gaps should be included in sequences
+    :return: string containing fasta sequence with newline characters
+    """
 
     if gaps is True:  # Gaps included
         if cons is False:  # All other sequences
@@ -40,16 +38,15 @@ def clean_fasta(seq: str, cons: bool, gaps: bool) -> str:
 
 
 def write_fasta(family: str, seqs: list, gaps: bool, fam_dir: str):
-    """=============================================================================================
-    This function accepts a list of lines from the pfam database that contain sequences in the same
-    family and writes them to the same file.
+    """Writes each sequence in a family to a fasta file, either with or without gaps.
 
     :param family: name of family that line is from
     :param list: list of lines from pfam database
     :param gaps: flag to indicate if gaps should be included in sequences
-    :param fam_dir: directory to store families
-    ============================================================================================="""
+    :param fam_dir: name of directory to store families
+    """
 
+    os.mkdir(f'{fam_dir}/{family}')
     with open(f'{fam_dir}/{family}/seqs.fa', 'w', encoding='utf8') as file:
         for line in seqs:
 
@@ -69,15 +66,13 @@ def write_fasta(family: str, seqs: list, gaps: bool, fam_dir: str):
                 file.write(f'>{seq_id}\t{region}\t{family}\n{seq}\n')
 
 
-def read_pfam(pfam: str, gaps: bool, fam_dir: str):  #\\NOSONAR
-    """=============================================================================================
-    This function accepts a pfam database file and parses individual sequence into a file for each
-    sequence in each family. The files are stored in a directory named after the family.
+def read_pfam(pfam: str, gaps: bool, fam_dir: str):
+    """Writes each sequence in Pfam-A.seed database to a fasta file corresponding to the family.
 
     :param pfam: Pfam database file
     :param gaps: flag to indicate if gaps should be included in sequences
     :param fam_dir: name of directory to store families
-    ============================================================================================="""
+    """
 
     with open(pfam, 'r', encoding='utf8', errors='replace') as file:
         in_fam, seqs = False, []  # Flag to indicate if we are in a family and list to store seqs
@@ -87,10 +82,6 @@ def read_pfam(pfam: str, gaps: bool, fam_dir: str):  #\\NOSONAR
             if line.startswith('#=GF ID'):
                 family = line.split()[2]
                 in_fam = True
-
-                # Create a directory for the family
-                if not os.path.exists(family):
-                    os.mkdir(f'{fam_dir}/{family}')
 
             # If in a family, read sequences and write each one to a file
             elif in_fam:
@@ -107,11 +98,10 @@ def read_pfam(pfam: str, gaps: bool, fam_dir: str):  #\\NOSONAR
 
 
 def main():
-    """=============================================================================================
-    Main detects if Pfam-A.seed database is in directory. If not, it will download from Pfam
+    """Main detects if Pfam-A.seed database is in directory. If not, it will download from Pfam
     website and unzip. Then, it will call read_pfam to parse each family into individual fasta
     files.
-    ============================================================================================="""
+    """
 
     # Read Pfam-A.seed if it exists
     pfam_seed = 'data/Pfam-A.seed'

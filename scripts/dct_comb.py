@@ -1,8 +1,8 @@
-"""================================================================================================
-This script takes DCT transforms from npy files and combines them into a single numpy array.
+"""This script takes DCT transforms from npy files and combines them into a single numpy array.
 
-Ben Iovino  07/24/23   SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "07/24/23"
+"""
 
 import os
 import numpy as np
@@ -10,12 +10,10 @@ from util import Transform
 
 
 def combine(files: list):
-    """=============================================================================================
-    This function takes a list of npy files containing DCT transforms and combines them into a
-    single transform.
+    """Combines a list of npy files containing DCT transforms into a single file.
 
     :param files: list of npy files
-    ============================================================================================="""
+    """
 
     # Get all transforms
     trdict = {}
@@ -43,9 +41,8 @@ def combine(files: list):
 
 
 def main():
-    """=============================================================================================
-    Main calls combine() to combine all DCT transforms from the list of files.
-    ============================================================================================="""
+    """Main calls combine() to combine all DCT transforms from the list of files.
+    """
 
     # Get all avg transform files from data directory
     avg_files = []

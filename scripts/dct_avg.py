@@ -1,8 +1,8 @@
-"""================================================================================================
-This script finds the average iDCT of embeddings for each Pfam family and saves them to file.
+"""This script finds the average iDCT of embeddings for each Pfam family and saves them to file.
 
-Ben Iovino  07/06/23    SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "07/06/23"
+"""
 
 import argparse
 import os
@@ -19,16 +19,14 @@ logging.basicConfig(filename=log_filename, filemode='w',
 
 def transform_avgs(
         fam: str, positions: dict, embeddings: dict, args: argparse.Namespace) -> np.ndarray:
-    """=============================================================================================
-    This function accepts a dictionary of positions that are included in the consensus sequence and
-    a dictionary of embeddings. It averages the embeddings for each position and returns the iDCT
-    vector of the whole embedding as a numpy array.
+    """Averages the embeddings for each position in a dictionary of embeddings and returns the
+    iDCT vector of the averaged embedding as a numpy array.
 
     :param positions: dict where seq id is key with list of positions as value
     :param embeddings: dict where seq is key with list of embeddings as value
     :param args: argparse.Namespace object with dct dimensions
-    :return avg_dct: numpy array of iDCT vector
-    ============================================================================================="""
+    :return: numpy array of iDCT vector
+    """
 
     # Create a dict of lists where each list contains the embeddings for a position in the consensus
     seq_embed = {}
@@ -54,12 +52,11 @@ def transform_avgs(
 
 
 def main():
-    """=============================================================================================
-    Main goes through each Pfam family and calls get_seqs() to get protein sequences, cons_pos() to
-    get the consensus sequence positions, get_embed() to get the embeddings for each sequence, one
-    of the transform functions to transform the embeddings. All of the transformed embeddings are
-    saved to a numpy array.
-    ============================================================================================="""
+    """Main goes through each Pfam family and calls get_seqs() to get protein sequences, cons_pos()
+    to get the consensus sequence positions, get_embed() to get the embeddings for each sequence,
+    one of the transform functions to transform the embeddings. All of the transformed embeddings
+    are saved to a numpy array.
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='data/esm2_17_embed', help='direc of embeds to avg')

@@ -1,8 +1,8 @@
-"""================================================================================================
-This script parses various log files from data directory to get info or graph results.
+"""This script parses various log files from data directory to get info or graph results.
 
-Ben Iovino   07/25/23   SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "07/25/23"
+"""
 
 import argparse
 import datetime
@@ -11,12 +11,11 @@ from Bio import SeqIO
 
 
 def parse_search(file: str) -> dict:  #\\NOSONAR
-    """=============================================================================================
-    This function gets results from search logs.
+    """Returns dict of results from search.log.
 
     :param file: path to search log file
-    :return results: dictionary of results for each query
-    ============================================================================================="""
+    :return: dictionary of results for each query
+    """
 
     # Get avg time and results
     results = {}
@@ -65,12 +64,10 @@ def parse_search(file: str) -> dict:  #\\NOSONAR
 
 
 def missed_queries(results: dict):
-    """=============================================================================================
-    This function takes the dictionary of results from parse_search() and finds the queries that
-    were not found.
+    """Plots information about the queries that were not found in a search.
 
     :param results: dictionary where query is key and top result is value
-    ============================================================================================="""
+    """
 
     # Get family names of missed queries
     missed = []
@@ -120,11 +117,10 @@ def missed_queries(results: dict):
 
 
 def parse_test_layers(file: str):
-    """=============================================================================================
-    This function gets results from testing.log after running test_layers().
+    """Plots results about the accuracy of each layer in ESM2.
 
     :param file: path to test_layers.log
-    ============================================================================================="""
+    """
 
     layers, matches, top = [], [], []
     with open(file, 'r', encoding='utf8') as tefile:
@@ -150,15 +146,13 @@ def parse_test_layers(file: str):
 
 
 def heat_map(label1: list, label2: list, results: list, layer: int):
-    """=============================================================================================
-    This function takes two lists of labels and a list of corresponding values and graphs a heat
-    map.
+    """Plots results from test_transforms() as a heat map.
 
     :param label1: list of labels
     :param label2: list of labels
     :param results: list of values
     :param layer: layer of ESM2
-    ============================================================================================="""
+    """
 
     # Put values into a 2D array for heat map based on labels
     data = [results[i:i+len(label2)] for i in range(0, len(results), len(label2))]
@@ -180,11 +174,10 @@ def heat_map(label1: list, label2: list, results: list, layer: int):
 
 
 def parse_test_transforms(file: str) -> dict:  #\\NOSONAR
-    """=============================================================================================
-    This function gets results from testing.log after running test_transforms().
+    """Returns dict of results from test_transforms.log.
 
     :param file: path to test_transforms.log
-    ============================================================================================="""
+    """
 
     rows, cols, results, layer = [], [], [], ''
     with open(file, 'r', encoding='utf8') as tefile:
@@ -216,9 +209,8 @@ def parse_test_transforms(file: str) -> dict:  #\\NOSONAR
 
 
 def main():
-    """=============================================================================================
-    Main function parses log files from data directory for desired information.
-    ============================================================================================="""
+    """Main function parses log files from data directory for desired information.
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='data/logs/search_dct.log')

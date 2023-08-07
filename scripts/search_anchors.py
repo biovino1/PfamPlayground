@@ -1,9 +1,9 @@
-"""================================================================================================
-This script takes a query sequence and a list of anchor sequences and searches for the most
+"""This script takes a query sequence and a list of anchor sequences and searches for the most
 similar anchor sequence.
 
-Ben Iovino  05/24/23   SearchEmb
-================================================================================================"""
+__author__ = "Ben Iovino"
+__date__ = "05/24/23"
+"""
 
 import argparse
 import datetime
@@ -24,16 +24,14 @@ logging.basicConfig(filename=log_filename, filemode='w',
 
 
 def embed_query(sequence: str, tokenizer, model, device, args: argparse.Namespace) -> np.ndarray:
-    """=============================================================================================
-    This function loads a query sequence from file and embeds it using the provided tokenizer and
-    encoder.
+    """Returns the embedding of a fasta sequence.
 
     :param sequence: path to fasta file containing query sequence
     :param tokenizer: tokenizer
     :param model: encoder model
     :param device: cpu or gpu
-    :return np.ndarray: embedding of query sequence
-    ============================================================================================="""
+    :return: np array of query sequence embedding
+    """
 
     seq = ()
     with open(sequence, 'r', encoding='utf8') as f:
@@ -48,17 +46,16 @@ def embed_query(sequence: str, tokenizer, model, device, args: argparse.Namespac
 
 
 def query_sim(anchor: np.ndarray, query: np.ndarray, sims: dict, family: str, metric: str) -> dict:
-    """=============================================================================================
-    This function takes an anchor embedding (1D array) and a query embedding (2D array) and finds
-    the similarity between the anchor and each embedding in the query.
+    """Finds similarity between two arrays and returns a dictionary of similarities between
+    anchor and query embeddings.
 
     :param anchor: embedding of anchor sequence
     :param query: embedding of query sequence
     :param sims: dictionary of similarities between anchor and query embeddings
     :param family: name of anchor family
     :param metric: similarity metric
-    :return sims: updated dictionary
-    ============================================================================================="""
+    :return: updated dictionary of similarities between anchor and query embeddings
+    """
 
     sim_list = []
     for embedding in query:
@@ -87,16 +84,14 @@ def query_sim(anchor: np.ndarray, query: np.ndarray, sims: dict, family: str, me
 
 
 def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> dict:
-    """=============================================================================================
-    This function takes a query embedding, a directory of anchor embeddings, and returns a dict
-    of the top n most similar anchor families.
+    """Returns a dict of the top n most similar anchor families to a query.
 
     :param query: embedding of query sequence
     :param anchors: directory of anchor embeddings
     :param results: number of results to return
     :param metric: similarity metric
-    :return top_sims: dict where keys are anchor families and values are similarity scores
-    ============================================================================================="""
+    :return: dict where keys are anchor families and values are similarity scores
+    """
 
     # Search query against every set of anchors
     sims = {}
@@ -127,13 +122,13 @@ def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> 
 
 
 def search_results(query: str, results: dict) -> dict:
-    """=============================================================================================
-    This function compares a query sequence to a dictionary of results.
+    """Returns a dict of counts for matches, top n results, and same clan for all queries in a
+    search.
 
     :param query: query sequence
     :param results: dictionary of results from searching query against anchors
-    :return counts: dictionary of counts for matches, top 10, and same clan
-    ============================================================================================="""
+    :return: dictionary of counts for matches, top 10, and same clan
+    """
 
     # Log time and similarity for top 5 results
     logging.info('%s\n%s', datetime.datetime.now(), query)
@@ -156,17 +151,16 @@ def search_results(query: str, results: dict) -> dict:
         clans = pickle.load(file)
     for fams in clans.values():
         if query_fam in fams and results_fams[0] in fams:
-            counts['clans'] += 1
+            counts['clan'] += 1
             return counts
 
     return counts
 
 
 def main():
-    """=============================================================================================
-    Main function loads tokenizer and model, randomly samples a query sequence from a family, embeds
-    the query, searches the query against anchors, and logs the results
-    ============================================================================================="""
+    """Main function loads tokenizer and model, randomly samples a query sequence from a family,
+    embeds the query, searches the query against anchors, and logs the results
+    """
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', type=str, default='data/anchors')

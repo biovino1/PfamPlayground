@@ -58,16 +58,27 @@ same results as search_anchors.py.
 # SEARCH RESULTS
 **************************************************************************************************************
 
-So far, searching query sequences against the anchors has not been as successful as desired. To maintain 90%
-accuracy (family of the query sequence is in top 10 results), searches take a little over 30 seconds per query.
-This is much too slow for practical homolog search, nor is the accuracy high enough. Different filtering
-methods have been tried to reduce this time, however, accuracy is reduced as well. The fastest time per query
-in our testing has been 20 seconds with 85% accuracy. This is still too slow and inaccurate.
+So far, searching query sequences against the anchors has not been as successful as desired. To maintain 80%
+accuracy (family of the query sequence is the top result), searches take a little over 30 seconds per query.
+This is much too slow for practical homolog search, nor is the accuracy nearly high enough. Different filtering
+methods have been tried to reduce this time, the most successful producing an average of 20 seconds per query
+with a slight decrease in accuracy.
 
 If we cannot reduce the number of anchors searched to reduce search time, then we must find a way to reduce
 the size of sequence representations. Using the inverse discrete cosine transform, we can reduce the size of
 the embeddings from a large N x 1024 matrix to a single array of with size of our choosing. Just by using the
 embeddings produced by the final layer of either ProtT5 or ESM2 and transforming the average embedding for
-each family, we can reduce search time to less than 0.1 seconds per query with an accuracy of over 85%. To
-improve accuracy, we can concatenate the transformed average embeddings from multiple layers of the encoder
-to produce a more informative representation of the family.
+each family, we can reduce search time to less than 0.1 seconds per query with an accuracy of about 78%, almost
+on par with anchor searching and over 100x faster. To improve accuracy, we can concatenate the transformed
+average embeddings from multiple layers of the encoder to produce a more informative representation of the family.
+
+Embeddings from layer 17 of ESM2-t36-3B with DCT dimensions of 8x80 were found to produce the most accurate
+search results yet. We have tried concatenating embeddings from multiple layers, but this has not produced any
+more accurate search results. It has been found that most of the families missed during searches have a below
+average number of sequences in the Pfam-A.seed database, or have on average shorter sequences. This leads to
+representations that are not as informative as those for families with more sequences or longer sequences. To
+remedy this we can take a higher sample of sequences from the Pfam-A.full database. Although they are not
+aligned, we can embed each sequence, find the DCT, and then average the DCTs, as opposed to averaging the
+consensus embedding where consensus positions were determined from the alignment. Earlier experiments found that
+the method of averaging does not significantly change search results when the number of sequences per family
+remains the same. By adding more sequences, perhaps the average embedding will be improved.
