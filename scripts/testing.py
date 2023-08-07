@@ -9,9 +9,11 @@ import os
 from random import sample
 import numpy as np
 import torch
+import torch.multiprocessing as mp
 from Bio import SeqIO
 from util import load_model, Embedding, Transform
 
+NUM_GPUS = torch.cuda.device_count()
 
 log_filename = 'data/logs/testing.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
@@ -86,22 +88,46 @@ def get_seqs(fam: str, direc: str, seqs: list) -> list:
     """
 
     for fam_dir in os.listdir(direc):
-        if fam == fam_dir:
+        if fam == fam_dir:  # Looking specifically for families missed in prior searches
             for seq in SeqIO.parse(f'{direc}/{fam_dir}/seqs.fa', 'fasta'):
                 if seq.id == 'consensus':  # Skip consensus sequence
                     continue
                 seq = (seq.id, str(seq.seq))
-                if seq not in seqs:  # Make sure seq is unique
+                if seq not in seqs:  # Make sure seq is unique (id can be the same)
                     seqs.append(seq)
 
     return seqs
 
 
-def test_full():
-    """Embed sequences from families that were missed in prior searches using every sequence in pfam
-    full database. Because there is no alignment for the full database, we will transform each
-    embedding then average the transforms for each family. These will be used as the family
-    representation during search.
+def get_transforms(seqs: list, tokenizer, model, device: str) -> list:
+    """Returns a list of transformed embeddings for each sequence in seqs.
+
+    :param seqs: list of sequences in a Pfam family
+    :param tokenizer: tokenizer
+    :param model: model
+    :param device: cpu/gpu
+    """
+
+    transforms = []
+    for seq in seqs:
+        embed = Embedding(seq[0], seq[1], None)  #pylint: disable=E1136
+        embed.embed_seq(tokenizer, model, device, 'esm2', 17)
+        embed = Transform(seq[0], embed.embed[1], None)  #pylint: disable=E1136
+        embed.quant_2D(8, 80)
+        if embed.trans[1] is not None:  # Embedding may be too short
+            transforms.append(embed.trans[1])
+
+    return transforms
+
+
+def embed_fam(fam: str, tokenizer, model, device: str):
+    """Embeds and transforms sequences from a Pfam family. Sequences are sampled from both the
+    seed and full databases. The average transform is then calculated and saved to file.
+
+    :param fam: family name
+    :param tokenizer: tokenizer
+    :param model: model
+    :param device: device
 
     Before embedding make sure these these lines of code are in the main function of embed_pfam.py:
 
@@ -110,49 +136,78 @@ def test_full():
     families = [f'data/full_seqs/{fam.split(",")[0]}' for fam in families]
     """
 
-    # Load tokenizer and encoder
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  #pylint: disable=E1101
+    # Get sequences from seed and full databases
+    seqs = get_seqs(fam, 'data/full_seqs', [])
+    seqs = get_seqs(fam, 'data/families_nogaps', seqs)
+
+    # Randomly sample sequences - embed and transform
+    logging.info('Embedding %s', fam)
+    sample_size = len(seqs) if len(seqs) < 500 else 500
+    seqs = sample(seqs, sample_size)
+    transforms = []
+    transforms = get_transforms(seqs, tokenizer, model, device)
+
+    # Find average value for each position in all transforms
+    logging.info('Averaging %s', fam)
+    transforms = np.mean(transforms, axis=0, dtype=int)
+    avg_dct = np.array([int(val) for val in transforms])
+    avg_dct = Transform(fam, None, avg_dct)
+
+    # Save avg transform to file
+    with open(f'data/full_dct/{fam}.npy', 'wb') as emb:
+        np.save(emb, avg_dct.trans)
+
+
+def queue_fam(rank: int, queue: mp.Queue):
+    """Goes through queue of families to embed and transform and which GPU to load models on.
+
+    :param rank: GPU to load model on
+    :param queue: queue of families to embed and transform
+    """
+
+    # Load model on GPU
+    device = torch.device(f'cuda:{rank}')  #pylint: disable=E1101
     tokenizer, model = load_model('esm2', device)
 
-    # Get family names from file
-    with open('data/missed_families.txt', 'r', encoding='utf8') as f:
-        families = f.read().splitlines()
-    families = [f'{fam.split(",")[0]}' for fam in families][1:]
+    # Embed and transform each family until queue is empty
+    while True:
+        fam, direc = queue.get()
+        if fam is None:
+            break
+        if f'{fam}.npy' in os.listdir(direc):  # Skip if already existing
+            logging.info('Skipping %s...\n', fam)
+            continue
+        embed_fam(fam, tokenizer, model, device)
+
+
+def test_full():
+    """ Embeds and transforms sequences from families that were missed in prior searches.
+    Initializes a queue 
+    """
 
     # Create directory to store each avg transform
     direc = 'data/full_dct'
     if not os.path.exists(direc):
         os.makedirs(direc)
 
-    # Read sequences from seed and full databases
+    # Get family names from file
+    with open('data/missed_families.txt', 'r', encoding='utf8') as f:
+        families = f.read().splitlines()
+    families = [f'{fam.split(",")[0]}' for fam in families][1:]
+
+    # Initialize queue/processes and call queue_fam
+    queue = mp.Queue()
+    processes = []
+    for rank in range(NUM_GPUS):
+        proc = mp.Process(target=queue_fam, args=(rank, queue))
+        proc.start()
+        processes.append(proc)
     for fam in families:
-        if f'data/full_dct/{fam}.npy' in os.listdir(direc):
-            continue
-        seqs = get_seqs(fam, 'data/full_seqs', [])
-        seqs = get_seqs(fam, 'data/families_nogaps', seqs)
-
-        # Randomly sample sequences - embed and transform
-        logging.info('Embedding %s', fam)
-        sample_size = len(seqs) if len(seqs) < 500 else 500
-        seqs = sample(seqs, sample_size)
-        transforms = []
-        for seq in seqs:
-            embed = Embedding(seq[0], seq[1], None)  #pylint: disable=E1136
-            embed.embed_seq(tokenizer, model, device, 'esm2', 17)
-            embed = Transform(seq[0], embed.embed[1], None)  #pylint: disable=E1136
-            embed.quant_2D(8, 80)
-            if embed.trans[1] is not None:
-                transforms.append(embed.trans[1])
-
-        # Find average value for each position in all transforms
-        logging.info('Averaging %s', fam)
-        transforms = np.mean(transforms, axis=0, dtype=int)
-        avg_dct = np.array([int(val) for val in transforms])
-        avg_dct = Transform(fam, None, avg_dct)
-
-        # Save avg transform to file
-        with open(f'data/full_dct/{fam}.npy', 'wb') as emb:
-            np.save(emb, avg_dct.trans)
+        queue.put((fam, direc))
+    for _ in range(NUM_GPUS):
+        queue.put((None, None))
+    for proc in processes:
+        proc.join()
 
     # Combine all avg transforms into one file
     avg_dcts = []
