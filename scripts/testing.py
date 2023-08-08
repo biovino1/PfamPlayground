@@ -31,14 +31,16 @@ def test_layers():
     # Embed seqs, transform them, and search
     for i in range(1, 36):
         os.system(f'python scripts/embed_pfam.py -d data/ -e esm2 -l {i}')
-        os.system('python scripts/dct_avg.py -d data/esm2_embed -s1 5 -s2 44')
-        os.system(f'python scripts/search_dct.py -d data/avg_dct.npy -l {i} -s1 5 -s2 44')
+        os.system(f'python scripts/dct_avg.py -d data/esm2_{i}_embed -s1 5 -s2 44')
+        os.system(f'python scripts/search_dct.py -d data/esm2_{i}_544_avg.npy -l {i} -s1 5 -s2 44')
 
         # Read last line of search log and write to test_layers log
         with open('data/logs/search_dct.log', 'r', encoding='utf8') as file:
             lines = file.readlines()
             last_line = lines[-2]
         logging.info('Search results for ESM2 layer %s\n%s\n', i, last_line)
+        os.remove(f'esm2_{i}_embed')
+        os.remove(f'esm2_{i}_544_avg.npy')
 
 
 def test_transforms():
@@ -51,11 +53,10 @@ def test_transforms():
     i = [3, 4, 5, 6, 7, 8]
     j = [20, 30, 40, 50, 60, 70, 80]
 
-    # Embed using layers 17 and 23
+    # Embed using best layers from test_layers()
     for lay in [17, 25]:
 
-        # For every combination of i and j, transform embeddings from layers 17 and 25 and
-        # search the full pfam db against the transformed embeddings
+        # For every combination of i and j, transform embeddings
         for s1 in i:
             for s2 in j:
 

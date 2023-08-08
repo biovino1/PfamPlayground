@@ -104,8 +104,8 @@ def missed_queries(results: dict):
 
     # Plot number of sequences in each family vs. avg sequence length
     plt.figure(figsize=(12, 5))
-    plt.plot([fam[1] for fam in fams.values()],
-              [fam[0] for fam in fams.values()], 'o', markersize=2)
+    plt.plot([fam[0] for fam in fams.values()],
+              [fam[1] for fam in fams.values()], 'o', markersize=2)
     plt.xlabel('Number of Sequences')
     plt.ylabel('Avg Length of Sequences')
     plt.title('Number of Sequences vs. Avg Length of Sequences in Each Missed Family')

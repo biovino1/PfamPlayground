@@ -1,4 +1,4 @@
-"""This script embeds sequences from Pfam and saves them as numpy arrays.
+"""This script embeds sequences from Pfam-A.seed and saves them as numpy arrays.
 
 __author__ = "Ben Iovino"
 __date__ = "05/08/23"
@@ -121,7 +121,7 @@ def embed_gpu(args: argparse.Namespace):
     mp_queue = mp.Queue()
     processes = []
     for rank in range(args.p):
-        proc = mp.Process(target=queue_fam, args=(rank, mp_queue, args))
+        proc = mp.Process(target=queue_fam, args=(args.g[rank], mp_queue, args))
         proc.start()
         processes.append(proc)
     for fam in [f'{args.f}/{fam}' for fam in os.listdir(args.f)]:
@@ -141,6 +141,7 @@ def main():
         -d: directory to store embeddings
         -e: encoder type (prott5 or esm2)
         -f: family directory
+        -g: list of GPU IDs to use
         -l: encoder layer (only for esm2)
         -p: number of processes (for GPU)
     """
@@ -150,6 +151,7 @@ def main():
     parser.add_argument('-d', type=str, default='data')
     parser.add_argument('-e', type=str, default='esm2')
     parser.add_argument('-f', type=str, default='data/families_nogaps')
+    parser.add_argument('-g', type=int, nargs='+', default=[1])
     parser.add_argument('-l', type=int, default=17)
     parser.add_argument('-p', type=int, default=1)
     args = parser.parse_args()
