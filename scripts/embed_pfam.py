@@ -11,7 +11,7 @@ import torch
 import torch.multiprocessing as mp
 import numpy as np
 from Bio import SeqIO
-from util import load_model, Embedding
+from util import load_model, Embedding, Transform
 
 log_filename = 'data/logs/embed_pfam.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
@@ -47,7 +47,7 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
 
     # Get last directory in path
     fam = path.rsplit('/', maxsplit=1)[-1]
-    direc = f'{args.d}/{args.e}_{args.l}_embed'
+    direc = f'{args.d}/{args.e}_{args.l}_{args.t}'
     if not os.path.isdir(f'{direc}/{fam}'):
         os.makedirs(f'{direc}/{fam}')
 
@@ -57,7 +57,7 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
     for seq in seqs:  # Embed each sequence individually
 
         # Check if embeddings already exist
-        if os.path.exists(f'{direc}/{fam}/embed.npy'):
+        if os.path.exists(f'{direc}/{fam}/{args.t}.npy'):
             logging.info('Embeddings for %s already exists. Skipping...\n', fam)
             return  # break out of function or else empty list will be saved
 
@@ -68,10 +68,18 @@ def embed_fam(path: str, tokenizer, model, device, args: argparse.Namespace):
         # Initialize Embedding object and embed sequence
         embed = Embedding(seq[0], seq[1], None)
         embed.embed_seq(tokenizer, model, device, args.e, args.l)
-        embeds.append(embed.embed)
+
+        # Transform embeddings if arg is passed
+        if args.t == 'transform':
+            embed = Transform(seq[0], embed.embed[1], None)  #pylint: disable=E1136
+            embed.quant_2D(args.s1, args.s2)
+            if embed.trans[1] is not None:  # Embedding may be too short
+                embeds.append(embed.trans)
+        else:
+            embeds.append(embed.embed)
 
     # Save embeds to file
-    with open(f'{direc}/{fam}/embed.npy', 'wb') as emb:
+    with open(f'{direc}/{fam}/{args.t}.npy', 'wb') as emb:
         np.save(emb, embeds)
     logging.info('Finished embedding sequences in %s\n', fam)
 
@@ -134,7 +142,9 @@ def embed_gpu(args: argparse.Namespace):
 
 def main():
     """Main calls either embed_cpu or embed_gpu depending on args and embeds sequences from
-    families in args.f.
+    families in args.f. Can choose to embed with either prott5 or esm2 and which layer of
+    esm2 to use. Can also choose to transform embeddings with DCT, in which case the
+    transformations will be saved instead of the embeddings.
 
     args:
         -c: cpu or gpu
@@ -144,6 +154,9 @@ def main():
         -g: list of GPU IDs to use
         -l: encoder layer (only for esm2)
         -p: number of processes (for GPU)
+        -s1: columns for DCT
+        -s2: rows for DCT
+        -t: whether to transform embeddings (embed or transform)
     """
 
     parser = argparse.ArgumentParser()
@@ -152,8 +165,11 @@ def main():
     parser.add_argument('-e', type=str, default='esm2')
     parser.add_argument('-f', type=str, default='data/families_nogaps')
     parser.add_argument('-g', type=int, nargs='+', default=[1])
-    parser.add_argument('-l', type=int, default=17)
+    parser.add_argument('-l', type=int, default=10)
     parser.add_argument('-p', type=int, default=1)
+    parser.add_argument('-s1', type=int, default=8)
+    parser.add_argument('-s2', type=int, default=80)
+    parser.add_argument('-t', type=str, default='transform')
     args = parser.parse_args()
 
     if args.c == 'cpu':

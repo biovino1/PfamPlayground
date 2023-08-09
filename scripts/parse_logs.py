@@ -208,6 +208,27 @@ def parse_test_transforms(file: str) -> dict:  #\\NOSONAR
     heat_map(rows, cols, results, layer)
 
 
+def compare_missed_queries(file1: str, file2: str) -> list:
+    """Returns a list of queries missed by both files
+
+    :param file1: path to missed queries file
+    :param file2: path to second missed queries file
+    """
+
+    with open(file1, 'r', encoding='utf8') as mfile:
+        missed1 = [line.split(',')[0] for line in mfile.readlines()[1:]]
+    with open(file2, 'r', encoding='utf8') as mfile:
+        missed2 = [line.split(',')[0] for line in mfile.readlines()[1:]]
+
+    # Get queries missed by both files
+    missed = []
+    for query in missed1:
+        if query in missed2:
+            missed.append(query)
+
+    return missed
+
+
 def main():
     """Main function parses log files from data directory for desired information.
     """

@@ -17,11 +17,12 @@ logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')
 
 
-def transform_avgs(
+def transform_avg(
         fam: str, positions: dict, embeddings: dict, args: argparse.Namespace) -> np.ndarray:
     """Averages the embeddings for each position in a dictionary of embeddings and returns the
     iDCT vector of the averaged embedding as a numpy array.
 
+    :param fam: Pfam family
     :param positions: dict where seq id is key with list of positions as value
     :param embeddings: dict where seq is key with list of embeddings as value
     :param args: argparse.Namespace object with dct dimensions
@@ -51,18 +52,11 @@ def transform_avgs(
     return avg_embed
 
 
-def main():
-    """Main goes through each Pfam family and calls get_seqs() to get protein sequences, cons_pos()
-    to get the consensus sequence positions, get_embed() to get the embeddings for each sequence,
-    one of the transform functions to transform the embeddings. All of the transformed embeddings
-    are saved to a numpy array.
-    """
+def get_avgs(args: argparse.Namespace):
+    """ Saves the DCT of the average embedding for each Pfam family to the same file.
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/esm2_17_embed', help='direc of embeds to avg')
-    parser.add_argument('-s1', type=int, default=6)
-    parser.add_argument('-s2', type=int, default=50)
-    args = parser.parse_args()
+    :param args: argparse.Namespace object with directory of embeddings and dct dimensions
+    """
 
     dcts = []
     for i, fam in enumerate(os.listdir(args.d)):
@@ -76,14 +70,53 @@ def main():
         embed_direc = f'{args.d}/{fam}'
         embeddings = get_embed(embed_direc, sequences)
 
-        # Transform each average embedding and store in list
-        avg_dct = transform_avgs(fam, positions, embeddings, args)
+        # Transform average embedding and store in list
+        avg_dct = transform_avg(fam, positions, embeddings, args)
         if avg_dct.trans[1] is not None:
             dcts.append(avg_dct.trans)
 
     # Save all dcts to file
     enclay = '_'.join(args.d.split('/')[-1].split('_')[:2])  # enc/layer used to embed
     np.save(f'data/{enclay}_{args.s1}{args.s2}_avg.npy', dcts)
+
+
+def avg_transforms(args: argparse.Namespace):
+    """Saves the average DCT of a Pfam family's transforms to file.
+
+    :param args: argparse.Namespace object with name of transform directory
+    """
+
+    dcts = []
+    for i, fam in enumerate(os.listdir(args.d)):
+        logging.info('Averaging transformations for %s, %s', fam, i)
+
+        # Load transforms for the family as a numpy array
+        transforms = np.load(f'{args.d}/{fam}/transform.npy', allow_pickle=True)
+
+        # Average the transforms
+        avg_dct = np.mean([trans[1] for trans in transforms], axis=0, dtype=int)
+        avg_dct = Transform(fam, None, avg_dct)
+        dcts.append(avg_dct.trans)
+
+    # Save avg transform to file
+    enclay = '_'.join(args.d.split('/')[-1].split('_')[:2])  # enc/layer used to embed
+    np.save(f'data/{enclay}_{args.s1}{args.s2}_avg.npy', dcts)
+
+
+def main():
+    """Main 
+    """
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-d', type=str, default='data/esm2_17_embed')
+    parser.add_argument('-s1', type=int, default=6)
+    parser.add_argument('-s2', type=int, default=50)
+    args = parser.parse_args()
+
+    if args.d.split('_')[-1] == 'embed':
+        get_avgs(args)
+    if args.d.split('_')[-1] == 'transform':
+        avg_transforms(args)
 
 
 if __name__ == '__main__':
