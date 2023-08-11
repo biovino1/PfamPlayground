@@ -132,6 +132,22 @@ def query_search(query: np.ndarray, search_db: np.ndarray, results: int, metric:
     return top_sims
 
 
+def clan_results(query_fam: str, results_fams: list) -> int:
+    """Returns 1 if query and top result are in the same clan, 0 otherwise.
+
+    :param query_fam: family of query sequence
+    :param results_fams: list of families of top N results
+    :return: 1 if query and top result are in the same clan, 0 otherwise
+    """
+
+    with open('data/clans.pkl', 'rb') as file:
+        clans = pickle.load(file)
+    for fams in clans.values():
+        if query_fam in fams and results_fams[0] in fams:
+            return 1
+    return 0
+
+
 def search_results(query: str, results: dict) -> dict:
     """Returns a dict of counts for matches, top n results, and same clan for all queries in a
     search.
@@ -156,21 +172,14 @@ def search_results(query: str, results: dict) -> dict:
     if query_fam in results_fams:  # Top n results
         counts['top'] += 1
         return counts
-
-    # Read clans dict and see if query is in same clan as top result
-    with open('data/clans.pkl', 'rb') as file:
-        clans = pickle.load(file)
-    for fams in clans.values():
-        if query_fam in fams and results_fams[0] in fams:
-            counts['clan'] += 1
-            return counts
+    counts['clan'] += clan_results(query_fam, results_fams)  # Same clan
 
     return counts
 
 
 def main():
-    """Main function loads tokenizer and model, randomly samples a query sequence from a family, embeds
-    and transforms the query, searches the query against DCT vectors, and logs the results
+    """Main function loads tokenizer and model, randomly samples a query sequence from a family,
+    embeds and transforms the query, searches the query against DCT vectors, and logs the results
     """
 
     parser = argparse.ArgumentParser()

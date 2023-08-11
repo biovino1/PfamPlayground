@@ -234,7 +234,7 @@ def main():
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/logs/search_dct.log')
+    parser.add_argument('-d', type=str, default='data/logs/search_results.log')
     args = parser.parse_args()
 
     results = parse_search(args.d)
