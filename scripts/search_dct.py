@@ -99,7 +99,7 @@ def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, fam: str, metric: 
 
     # City block distance between dct and query embedding
     if metric == 'cityblock':
-        dist = 1/cityblock(dct, query)
+        dist = 1-cityblock(dct, query)
         sims[fam].append(dist)
 
     return sims
@@ -148,12 +148,13 @@ def clan_results(query_fam: str, results_fams: list) -> int:
     return 0
 
 
-def search_results(query: str, results: dict) -> dict:
+def search_results(query: str, results: dict, counts) -> dict:
     """Returns a dict of counts for matches, top n results, and same clan for all queries in a
     search.
 
     :param query: query sequence
     :param results: dictionary of results from searching query against dcts
+    :param counts: dictionary of counts for matches, top n results, and same clan
     :return: dict of counts for matches, top n results, and same clan
     """
 
@@ -165,7 +166,7 @@ def search_results(query: str, results: dict) -> dict:
     # See if query is in top results
     results_fams = [fam.split('/')[0] for fam in results.keys()]
     query_fam = query.split('/')[0]
-    counts = {'match': 0, 'top': 0, 'clan': 0}
+    counts['total'] += 1
     if query_fam == results_fams[0]:  # Top result
         counts['match'] += 1
         return counts
@@ -218,11 +219,7 @@ def main():
 
         # Search idct embeddings and analyze results
         results = query_search(query.trans[1], search_db, args.t, 'cityblock')
-        search_counts = search_results(query.trans[0], results)
-        counts['match'] += search_counts['match']
-        counts['top'] += search_counts['top']
-        counts['clan'] += search_counts['clan']
-        counts['total'] += 1
+        counts = search_results(query.trans[0], results, counts)
         logging.info('Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
                       counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
 

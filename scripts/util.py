@@ -11,6 +11,7 @@ import torch
 import numpy as np
 from scipy.fft import dct, idct
 from transformers import T5EncoderModel, T5Tokenizer
+from scipy.spatial.distance import cityblock
 
 
 def load_model(encoder: str, device: str) -> tuple:
@@ -207,3 +208,27 @@ class Transform:
             self.trans[1] = vec
         else:
             self.trans[1] = np.concatenate((transform, vec))
+
+
+    def search(self, search_db: np.ndarray, top: int) -> list:
+        """Searches transform against a database of transforms:
+
+        :param database: array of transforms
+        :param top: number of results to return
+        :return: list of top n results
+        """
+
+        # Search query against every dct embedding
+        sims = {}
+        for transform in search_db:
+            fam, db_dct = transform[0], transform[1]  # family name, dct vector for family
+            sims[fam] = 1-cityblock(db_dct, self.trans[1]) # compare query to dct
+
+        # Standardize first n results
+        sims = dict(sorted(sims.items(), key=lambda item: item[1], reverse=True)[0:top])
+        mean = np.mean(list(sims.values()))
+        std = np.std(list(sims.values()))
+        for key in sims:
+            sims[key] = (sims[key] - mean) / std
+
+        return list(sims.items())

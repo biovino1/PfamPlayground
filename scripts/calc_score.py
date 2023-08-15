@@ -38,29 +38,18 @@ def load_results(file: str) -> dict:
     return searches
 
 
-def dist_stats(scores: list) -> (float, float):
-    """Returns mean and std of all values in a list
+def std_dist(scores: list) -> list:
+    """Returns standardized values of all values in a list
 
-    :param results: list of scores from a search
-    :return: mean and std of all scores
+    :param scores: list of scores from a search
+    :return: list of standardized scores
     """
 
     mean = sum(scores)/len(scores)
     std = np.std(scores)
+    std_scores = [round((score-mean)/std, 3) for score in scores]
 
-    return mean, std
-
-
-def std_dist(scores: list, mean: float, std: float) -> list:
-    """Returns a list of standardized scores
-
-    :param scores: list of scores from a search
-    :param mean: mean of scores
-    :param std: std of scores
-    :return: list of standardized scores
-    """
-
-    return [round((score-mean)/std, 3) for score in scores]
+    return std_scores
 
 
 def main():
@@ -76,8 +65,7 @@ def main():
     query_scores = {}
     for query, result in results.items():
         raw_scores = [r[1] for r in result]
-        mean, std = dist_stats(raw_scores)
-        std_scores = std_dist(raw_scores, mean, std)
+        std_scores = std_dist(raw_scores)
         query_scores[query] = [result[0][0], std_scores[0]]
 
     # Calculate auroc
@@ -86,8 +74,14 @@ def main():
     for query, result in query_scores.items():
         y_true.append(1 if query in result[0] else 0)
         y_score.append(result[1])
-    fpr, tpr, _ = metrics.roc_curve(y_true, y_score, pos_label=1)
+    fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score, pos_label=1)
     auc = metrics.auc(fpr, tpr)
+
+    count = 0
+    for _ in fpr:
+        count+=1
+        if count % 10 == 0:
+            print(fpr[count], tpr[count], thresholds[count])
 
     # Plot ROC curve
     plt.figure(figsize=(12, 5))
