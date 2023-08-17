@@ -159,14 +159,14 @@ def test_search(): #\\NOSONAR
             # Search for query in database
             results = query.search(database, 100)
             if results[0][1] > thresholds[i]:
-                print(f'Query {query.trans[0]} was found in {fam} with score {results[0][1]}')
+                logging.info('Query %s was found in %s with score %s',
+                              query.trans[0], fam, results[0][1])
                 break
-            else:
-                top_res = results[0:5]
-                top_res = [res[0] for res in top_res]
-                results_list.extend(top_res)
-                if i == 2:
-                    print(f'Query {query.trans[0]} not found, results: {results_list}')
+            top_res = results[0:5]
+            top_res = [res[0] for res in top_res]
+            results_list.extend(top_res)
+            if i == 2:
+                logging.info('Query %s not found, results: %s', query.trans[0], results_list)
 
 
 def main():
