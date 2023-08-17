@@ -148,7 +148,7 @@ def clan_results(query_fam: str, results_fams: list) -> int:
     return 0
 
 
-def search_results(query: str, results: dict, counts) -> dict:
+def search_results(query: str, results: dict, counts: dict) -> dict:
     """Returns a dict of counts for matches, top n results, and same clan for all queries in a
     search.
 

@@ -11,6 +11,7 @@ import os
 from math import ceil
 import numpy as np
 from embed_avg import get_seqs, cons_pos, get_embed
+from util import Embedding
 
 log_filename = 'data/logs/get_anchors.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
@@ -136,11 +137,12 @@ def determine_regions(avg_cos: list, num_anchors: int) -> dict:
     return regions
 
 
-def get_anchors(family: str, regions: dict):
+def get_anchors(family: str, regions: dict) -> np.ndarray:
     """Writes the anchor residues (embeddings) for each family to a file.
 
     :param family: name of Pfam family
     :param regions: dict where region is key with list of positions and average cosine similarity
+    :return: array of anchor residues (embeddings)
     """
 
     # Get average embedding
@@ -162,16 +164,13 @@ def get_anchors(family: str, regions: dict):
     for pos in anchors_pos:
         anchor_embed.append(avg_embed[pos])
 
-    # Save anchor embeddings to file
-    if not os.path.exists(f'data/anchors/{family}'):
-        os.makedirs(f'data/anchors/{family}')
-    with open(f'data/anchors/{family}/anchor_embed.npy', 'wb') as emb_f:
-        np.save(emb_f, anchor_embed, allow_pickle=True)
+    # Return anchor embeddings
+    return np.asarray(anchor_embed)
 
 
 def main():
-    """Main goes through each family with an average embedding and finds anchor residues for each family
-    based on cosine similarity between each embedding in the family to the average embedding.
+    """Main goes through each family with an average embedding and finds anchor residues for each
+    family based on cosine similarity between each embedding in the family to the average embedding.
     """
 
     parser = argparse.ArgumentParser()
@@ -179,6 +178,7 @@ def main():
     parser.add_argument('-d', type=str, help='direc of embeds to avg', default='data/esm2_17_embed')
     args = parser.parse_args()
 
+    anchors = []
     for i, family in enumerate(os.listdir(args.d)):
 
         # Check if anchors already exist
@@ -204,7 +204,12 @@ def main():
         regions = dict(list(regions.items())[:args.a])
 
         # Get anchor residues (embedding) for each sequence
-        get_anchors(family, regions)
+        anchor_embed = get_anchors(family, regions)
+        anchor_embed = Embedding(family, None, anchor_embed)
+        anchors.append(anchor_embed.embed)
+
+    # Save anchors as one file
+    np.save('data/anchors.npy', anchors, allow_pickle=True)
 
 
 if __name__ == '__main__':

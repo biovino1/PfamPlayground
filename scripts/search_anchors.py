@@ -68,7 +68,7 @@ def query_sim(anchor: np.ndarray, query: np.ndarray, sims: dict, family: str, me
 
         # City block distance between anchor and query embedding
         if metric == 'cityblock':
-            dist = 1/cityblock(anchor, embedding)
+            dist = 1-cityblock(anchor, embedding)
             sim_list.append(dist)
 
         # Find most similar embedding of query to anchor
@@ -83,11 +83,11 @@ def query_sim(anchor: np.ndarray, query: np.ndarray, sims: dict, family: str, me
     return sims
 
 
-def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> dict:
+def query_search(query: np.ndarray, search_db: np.ndarray, results: int, metric: str) -> dict:
     """Returns a dict of the top n most similar anchor families to a query.
 
     :param query: embedding of query sequence
-    :param anchors: directory of anchor embeddings
+    :param anchors: np array of anchor embeddings
     :param results: number of results to return
     :param metric: similarity metric
     :return: dict where keys are anchor families and values are similarity scores
@@ -95,23 +95,20 @@ def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> 
 
     # Search query against every set of anchors
     sims = {}
-    for family in os.listdir(anchors):
-        anchors = f'data/anchors/{family}/anchor_embed.npy'
-        ancs_emb = np.load(anchors)
+    for embedding in search_db:
+        fam, embed = embedding[0], embedding[1]  # family name, anchor embedding
+        if fam not in sims:  # store sims in dict
+            sims[fam] = []
 
         # I think np.load loads a single line as a 1D array, so convert to 2D or else
         # max_sim = max(cos_sim) will throw an error
-        if len(ancs_emb) == 1024:
-            ancs_emb = [ancs_emb]
-
-        # Add family to sims dict
-        if family not in sims:
-            sims[family] = []
+        if len(embed) > 10:
+            embed = [embed]
 
         # Compare every anchor embedding to query embedding
-        for anchor in ancs_emb:
-            sims = query_sim(anchor, query, sims, family, metric)
-        sims[family] = np.mean(sims[family])
+        for anchor in embed:
+            sims = query_sim(anchor, query, sims, fam, metric)
+        sims[fam] = np.mean(sims[fam])
 
     # Sort sims dict and return top n results
     top_sims = {}
@@ -121,12 +118,29 @@ def query_search(query: np.ndarray, anchors: str, results: int, metric: str) -> 
     return top_sims
 
 
-def search_results(query: str, results: dict) -> dict:
+def clan_results(query_fam: str, results_fams: list) -> int:
+    """Returns 1 if query and top result are in the same clan, 0 otherwise.
+
+    :param query_fam: family of query sequence
+    :param results_fams: list of families of top N results
+    :return: 1 if query and top result are in the same clan, 0 otherwise
+    """
+
+    with open('data/clans.pkl', 'rb') as file:
+        clans = pickle.load(file)
+    for fams in clans.values():
+        if query_fam in fams and results_fams[0] in fams:
+            return 1
+    return 0
+
+
+def search_results(query: str, results: dict, counts: dict) -> dict:
     """Returns a dict of counts for matches, top n results, and same clan for all queries in a
     search.
 
     :param query: query sequence
     :param results: dictionary of results from searching query against anchors
+    :param counts: dictionary of counts for matches, top n results, and same clan
     :return: dictionary of counts for matches, top 10, and same clan
     """
 
@@ -138,21 +152,14 @@ def search_results(query: str, results: dict) -> dict:
     # See if query is in top results
     results_fams = [fam.split('/')[0] for fam in results.keys()]
     query_fam = query.split('/')[0]
-    counts = {'match': 0, 'top': 0, 'clan': 0}
+    counts['total'] += 1
     if query_fam == results_fams[0]:  # Top result
         counts['match'] += 1
         return counts
     if query_fam in results_fams:  # Top n results
         counts['top'] += 1
         return counts
-
-    # Read clans dict and see if query is in same clan as top result
-    with open('data/clans.pkl', 'rb') as file:
-        clans = pickle.load(file)
-    for fams in clans.values():
-        if query_fam in fams and results_fams[0] in fams:
-            counts['clan'] += 1
-            return counts
+    counts['clan'] += clan_results(query_fam, results_fams)  # Same clan
 
     return counts
 
@@ -163,7 +170,7 @@ def main():
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/anchors')
+    parser.add_argument('-d', type=str, default='data/anchors.npy')
     parser.add_argument('-e', type=str, default='esm2')
     parser.add_argument('-l', type=int, default=17)
     parser.add_argument('-t', type=int, default=100)
@@ -173,13 +180,15 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
     tokenizer, model = load_model(args.e, device)
 
+    # Load embed/dct database
+    search_db = np.load(args.d, allow_pickle=True)
+    search_fams = [embed[0] for embed in search_db]
+
     # Call query_search for every query sequence in a folder
     counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
     direc = 'data/full_seqs'
     for fam in os.listdir(direc):
-
-        # Only search families with anchors
-        if fam not in os.listdir(args.d):
+        if fam not in search_fams:
             continue
 
         # Randomly sample one query from family
@@ -189,12 +198,8 @@ def main():
         embed = embed_query(seq_file, tokenizer, model, device, args)
 
         # Search anchors and analyze results
-        results = query_search(embed, args.d, args.t, 'cosine')
-        search_counts = search_results(f'{fam}/{query}', results)
-        counts['match'] += search_counts['match']
-        counts['top'] += search_counts['top']
-        counts['clan'] += search_counts['clan']
-        counts['total'] += 1
+        results = query_search(embed, search_db, args.t, 'cityblock')
+        counts = search_results(f'{fam}/{query}', results, counts)
         logging.info('Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
                       counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
 
