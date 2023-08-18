@@ -15,7 +15,6 @@ from Bio import SeqIO
 import numpy as np
 import torch
 from util import load_model, Embedding, Transform
-from scipy.spatial.distance import cityblock
 
 log_filename = 'data/logs/search_dct.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
@@ -79,59 +78,6 @@ def get_transform(seq: str, tokenizer, model, device: str, args: argparse.Namesp
     return dct
 
 
-def query_sim(dct: np.ndarray, query: np.ndarray, sims: dict, fam: str, metric: str) -> dict:
-    """Finds the similarity between two arrays and returns a dictionary of similarities between
-    database and query vectors.
-
-    :param dct: dct vector of sequence from database
-    :param query: dct vector of embedded query sequence
-    :param sims: dictionary of similarities between dct and query vectors
-    :param fam: name of dct sequence
-    :param metric: similarity metric
-    :return: updated dict of similarities between dct and query vectors
-    """
-
-    # Cosine similarity between dct and query embedding
-    if metric == 'cosine':
-        sim = np.dot(dct, query) / \
-            (np.linalg.norm(dct) * np.linalg.norm(query))
-        sims[fam].append(sim)
-
-    # City block distance between dct and query embedding
-    if metric == 'cityblock':
-        dist = 1-cityblock(dct, query)
-        sims[fam].append(dist)
-
-    return sims
-
-
-def query_search(query: np.ndarray, search_db: np.ndarray, results: int, metric: str) -> dict:
-    """Returns the top n results from searching a query sequence against a database of dct vectors.
-
-    :param query: embedding of query sequence
-    :param search_db: np array of dct embeddings
-    :param results: number of results to return
-    :param metric: similarity metric
-
-    :return: dict where keys are dct embeddings and values are similarity scores
-    """
-
-    # Search query against every dct embedding
-    sims = {}
-    for dct in search_db:
-        fam, dct = dct[0], dct[1]  # family name, dct vector for family
-        if fam not in sims:  # store sims in dict
-            sims[fam] = []
-        sims = query_sim(dct, query, sims, fam, metric)  # compare query to dct
-
-    # Sort sims dict and return top n results
-    top_sims = {}
-    for key in sorted(sims, key=sims.get, reverse=True)[:results]:
-        top_sims[key] = sims[key]
-
-    return top_sims
-
-
 def clan_results(query_fam: str, results_fams: list) -> int:
     """Returns 1 if query and top result are in the same clan, 0 otherwise.
 
@@ -155,6 +101,7 @@ def search_results(query: str, results: dict, counts: dict) -> dict:
     :param query: query sequence
     :param results: dictionary of results from searching query against dcts
     :param counts: dictionary of counts for matches, top n results, and same clan
+    :param top: number of results to return
     :return: dict of counts for matches, top n results, and same clan
     """
 
@@ -184,12 +131,12 @@ def main():
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', type=str, default='data/full_dct/full_dct.npy')
+    parser.add_argument('-d', type=str, default='data/esm2_17_875_avg.npy')
     parser.add_argument('-e', type=str, default='esm2')
     parser.add_argument('-l', type=int, nargs='+', default=[17])
     parser.add_argument('-t', type=int, default=100)
     parser.add_argument('-s1', type=int, nargs='+', default=[8])
-    parser.add_argument('-s2', type=int, nargs='+', default=[80])
+    parser.add_argument('-s2', type=int, nargs='+', default=[75])
     args = parser.parse_args()
 
     # Load tokenizer and encoder
@@ -203,9 +150,7 @@ def main():
     # Call query_search for every query sequence in a folder
     counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
     direc = 'data/full_seqs'
-    for fam in os.listdir(direc):
-        if fam not in search_fams:
-            continue
+    for fam in search_fams:
 
         # Randomly sample one query from family and get it appropriate dct
         queries = os.listdir(f'{direc}/{fam}')
@@ -218,7 +163,7 @@ def main():
             continue
 
         # Search idct embeddings and analyze results
-        results = query_search(query.trans[1], search_db, args.t, 'cityblock')
+        results = query.search(search_db, args.t)
         counts = search_results(query.trans[0], results, counts)
         logging.info('Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
                       counts['total'], counts['match'], args.t, counts['top'], counts['clan'])

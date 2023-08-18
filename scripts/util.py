@@ -136,6 +136,37 @@ class Embedding:
             self.esm2_embed(tokenizer, model, device, layer)
 
 
+    def search(self, search_db: np.ndarray, top: int) -> dict:
+        """Searches embedding against a database of embeddings
+
+        :param database: array of embeddings
+        :param top: number of results to return
+        :return: dict where keys are family names and values are similarity scores
+        """
+
+        sims = {}
+        for embed in search_db:
+            fam, embed = embed[0], embed[1]
+
+            # np.load loads single line as 1D array, convert to 2D
+            if len(embed) > 10:
+                embed = [embed]
+
+            # Find most similary embedding in query to embedding in database
+            for pos1 in embed:  # db embed
+                sim_list = []
+                for pos2 in self.embed[1]:  # query embed
+                    sim_list.append(1-cityblock(pos1, pos2))
+                max_sim = max(sim_list)  # most similar position between the two
+                sims[fam] = sims.get(fam, []) + [max_sim]
+            sims[fam] = np.mean(sims[fam])  # overall similarity between the two
+
+        # Sort sims dict and return top n results
+        sims = dict(sorted(sims.items(), key=lambda item: item[1], reverse=True)[0:top])
+
+        return sims
+
+
 class Transform:
     """This class stores inverse discrete cosine transforms (iDCT) for a single protein sequence.
     """
@@ -210,12 +241,12 @@ class Transform:
             self.trans[1] = np.concatenate((transform, vec))
 
 
-    def search(self, search_db: np.ndarray, top: int) -> list:
+    def search(self, search_db: np.ndarray, top: int) -> dict:
         """Searches transform against a database of transforms:
 
         :param database: array of transforms
         :param top: number of results to return
-        :return: list of top n results
+        :return: dict where keys are family names and values are similarity scores
         """
 
         # Search query against every dct embedding
@@ -224,11 +255,7 @@ class Transform:
             fam, db_dct = transform[0], transform[1]  # family name, dct vector for family
             sims[fam] = 1-cityblock(db_dct, self.trans[1]) # compare query to dct
 
-        # Standardize first n results
+        # Return first n results
         sims = dict(sorted(sims.items(), key=lambda item: item[1], reverse=True)[0:top])
-        mean = np.mean(list(sims.values()))
-        std = np.std(list(sims.values()))
-        for key in sims:
-            sims[key] = (sims[key] - mean) / std
 
-        return list(sims.items())
+        return sims
