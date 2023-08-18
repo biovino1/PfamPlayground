@@ -9,9 +9,9 @@ import os
 import logging
 import numpy as np
 from util import Transform
-from embed_avg import get_seqs, cons_pos, get_embed
+from avg_embed import get_seqs, cons_pos, get_embed
 
-log_filename = 'data/logs/dct_avg.log'  #pylint: disable=C0103
+log_filename = 'data/logs/avg_dct.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
 logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')

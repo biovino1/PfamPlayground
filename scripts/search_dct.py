@@ -23,7 +23,7 @@ logging.basicConfig(filename=log_filename, filemode='w',
 
 
 def embed_query(
-    sequence: str, tokenizer, model, device: str, encoder: str, layer: int) -> np.ndarray:
+    sequence: str, tokenizer, model, device: str, encoder: str, layer: int) -> Embedding:
     """Returns the embedding of a fasta sequence.
 
     :param sequence: path to fasta file containing query sequence
@@ -32,7 +32,7 @@ def embed_query(
     :param device: cpu or gpu
     :param encoder: prott5 or esm2
     :param layer: layer to extract features from (if using esm2)
-    :return: embedding of query sequence
+    :return: Embedding object containing embedding of query sequence
     """
 
     # Get seq from file
@@ -45,7 +45,7 @@ def embed_query(
     embed = Embedding(seq[0], seq[1], None)
     embed.embed_seq(tokenizer, model, device, encoder, layer)
 
-    return embed.embed[1]
+    return embed
 
 
 def get_transform(seq: str, tokenizer, model, device: str, args: argparse.Namespace) -> Transform:
@@ -64,7 +64,7 @@ def get_transform(seq: str, tokenizer, model, device: str, args: argparse.Namesp
     trans = {}
     for i, layer in enumerate(args.l):
         embed = embed_query(seq, tokenizer, model, device, args.e, layer)
-        embed = Transform(query, np.array(embed), None)
+        embed = Transform(query, embed.embed[1], None)
         embed.quant_2D(args.s1[i], args.s2[i])
         if embed.trans[1] is None:  # Skip if DCT is None
             return None  #\\NOSONAR

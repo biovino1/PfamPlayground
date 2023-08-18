@@ -136,17 +136,23 @@ class Embedding:
             self.esm2_embed(tokenizer, model, device, layer)
 
 
-    def search(self, search_db: np.ndarray, top: int) -> dict:
+    def search(self, search_db: np.ndarray, top: int, fams: list) -> dict:
         """Searches embedding against a database of embeddings
 
         :param database: array of embeddings
         :param top: number of results to return
+        :param fams: optional list of specific families to search in db
         :return: dict where keys are family names and values are similarity scores
         """
+
+        if fams is None:
+            fams = [embed[0] for embed in search_db]
 
         sims = {}
         for embed in search_db:
             fam, embed = embed[0], embed[1]
+            if fam not in fams:
+                continue
 
             # np.load loads single line as 1D array, convert to 2D
             if len(embed) > 10:

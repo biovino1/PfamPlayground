@@ -122,7 +122,7 @@ def main():
         embed = embed_query(seq_file, tokenizer, model, device, args)
 
         # Search anchors and analyze results
-        results = embed.search(search_db, args.t)
+        results = embed.search(search_db, args.t, None)
         counts = search_results(f'{fam}/{query}', results, counts)
         logging.info('Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
                       counts['total'], counts['match'], args.t, counts['top'], counts['clan'])

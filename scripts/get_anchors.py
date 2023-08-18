@@ -10,7 +10,7 @@ import logging
 import os
 from math import ceil
 import numpy as np
-from embed_avg import get_seqs, cons_pos, get_embed
+from avg_embed import get_seqs, cons_pos, get_embed
 from util import Embedding
 
 log_filename = 'data/logs/get_anchors.log'  #pylint: disable=C0103
