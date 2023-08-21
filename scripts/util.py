@@ -157,6 +157,8 @@ class Embedding:
             # np.load loads single line as 1D array, convert to 2D
             if len(embed) > 10:
                 embed = [embed]
+            if embed == []:  # no anchors
+                continue
 
             # Find most similary embedding in query to embedding in database
             for pos1 in embed:  # db embed

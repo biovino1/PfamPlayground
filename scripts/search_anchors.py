@@ -32,10 +32,12 @@ def embed_query(sequence: str, tokenizer, model, device, args: argparse.Namespac
     :return: Embedding object containing embedding of query sequence
     """
 
-    seq = ()
+    # Get seqs from file and randomly sample one
+    seqs = {}
     with open(sequence, 'r', encoding='utf8') as f:
-        for seq in SeqIO.parse(f, 'fasta'):
-            seq = (seq.id, str(seq.seq))
+        for i, seq in enumerate(SeqIO.parse(f, 'fasta')):
+            seqs[i] = (seq.id, str(seq.seq))
+    seq = sample(list(seqs.values()), 1)[0]
 
     # Initialize Embedding object and embed sequence
     embed = Embedding(seq[0], seq[1], None)
@@ -116,14 +118,12 @@ def main():
     for fam in search_fams:
 
         # Randomly sample one query from family
-        queries = os.listdir(f'{direc}/{fam}')
-        query = sample(queries, 1)[0]
-        seq_file = f'{direc}/{fam}/{query}'
+        seq_file = f'{direc}/{fam}/seqs.fa'
         embed = embed_query(seq_file, tokenizer, model, device, args)
 
         # Search anchors and analyze results
         results = embed.search(search_db, args.t, None)
-        counts = search_results(f'{fam}/{query}', results, counts)
+        counts = search_results(f'{fam}/{embed.embed[0]}', results, counts)
         logging.info('Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
                       counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
 

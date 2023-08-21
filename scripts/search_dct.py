@@ -35,11 +35,12 @@ def embed_query(
     :return: Embedding object containing embedding of query sequence
     """
 
-    # Get seq from file
-    seq = ()
+    # Get seqs from file and randomly sample one
+    seqs = {}
     with open(sequence, 'r', encoding='utf8') as f:
-        for seq in SeqIO.parse(f, 'fasta'):
-            seq = (seq.id, str(seq.seq))
+        for i, seq in enumerate(SeqIO.parse(f, 'fasta')):
+            seqs[i] = (seq.id, str(seq.seq))
+    seq = sample(list(seqs.values()), 1)[0]
 
     # Initialize Embedding object and embed sequence
     embed = Embedding(seq[0], seq[1], None)
@@ -150,12 +151,12 @@ def main():
     # Call query_search for every query sequence in a folder
     counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
     direc = 'data/full_seqs'
-    for fam in search_fams:
+    for fam in os.listdir(direc):
+        if fam not in search_fams:
+            continue
 
-        # Randomly sample one query from family and get it appropriate dct
-        queries = os.listdir(f'{direc}/{fam}')
-        query = sample(queries, 1)[0]
-        seq_file = f'{direc}/{fam}/{query}'
+        # Randomly sample one query from family and get its appropriate dct
+        seq_file = f'{direc}/{fam}/seqs.fa'
         query = get_transform(seq_file, tokenizer, model, device, args)
         if query is None:
             logging.info('%s\n%s\nQuery was too small for transformation dimensions',

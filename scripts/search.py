@@ -10,13 +10,12 @@ import argparse
 import datetime
 import logging
 import os
-from random import sample
 import numpy as np
 import torch
 from search_anchors import embed_query, search_results
 from util import load_model, Embedding, Transform
 
-log_filename = 'data/logs/search.log'  #pylint: disable=C0103
+log_filename = 'data/logs/search_anchors.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
 logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')
@@ -64,27 +63,33 @@ def main():
     # Call query_search for every query sequence in a folder
     counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
     direc = 'data/full_seqs'
-    for fam in dct_fams:
+    for fam in os.listdir(direc):
+        if fam not in dct_fams:
+            continue
 
         # Randomly sample one query from family and get it appropriate dct
-        queries = os.listdir(f'{direc}/{fam}')
-        query = sample(queries, 1)[0]
-        seq_file = f'{direc}/{fam}/{query}'
+        seq_file = f'{direc}/{fam}/seqs.fa'
         embed = embed_query(seq_file, tokenizer, model, device, args)
         dct = transform_embed(embed, args)
         if dct is None:
             logging.info('%s\n%s\nQuery was too small for transformation dimensions',
-                          datetime.datetime.now(), query)
+                          datetime.datetime.now(), embed.embed[0])
             continue
 
-        # Search idct embeddings, take top families, and search embeddings
+        # Search idct embeddings - check if top family is same as query family
+        # If so, continue to next query, otherwise search embeddings
         results = dct.search(dct_db, args.t)
         results_fams = [fam.split('/')[0] for fam in results.keys()]
-        results = embed.search(emb_db, args.t, results_fams)
-        counts = search_results(f'{fam}/{query}', results, counts)
-        logging.info('Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
+        if fam == results_fams[0]:
+            counts['total'] += 1
+            counts['match'] += 1
+            logging.info('DCT: Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
                       counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
-        break
+            continue
+        results = embed.search(emb_db, args.t, results_fams)
+        counts = search_results(f'{fam}/{embed.embed[0]}', results, counts)
+        logging.info('ANCHORS: Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
+                      counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
 
 
 if __name__ == '__main__':

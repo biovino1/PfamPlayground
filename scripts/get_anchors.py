@@ -77,14 +77,15 @@ def get_cos_sim(family: str, embeddings: dict) -> list:
     return avg_cos
 
 
-def get_region(avg_cos: list, regions: dict, threshold: float, num_regions: int) -> dict:
+def get_regions(
+        avg_cos: list, regions: dict, threshold: float, reg_length: int) -> dict:
     """Adds a region to the dict if the average cosine similarity of the entire region is
     greater than the threshold.
 
     :param avg_cos: list of average cosine similarities for each position
     :param regions: dict where region is key with list of positions and average cosine similarity
     :param threshold: minimum average cosine similarity for a position to be added to region
-    :param num_regions: number of regions found so far
+    :param reg_length: minimum number of positions in a region
     :return: dict where region number is key with list of regions and average cosine similarity
     """
 
@@ -99,9 +100,11 @@ def get_region(avg_cos: list, regions: dict, threshold: float, num_regions: int)
 
         # If cosine similarity is low, end current region
         else:
-            if in_region and len(curr_region) >= 2:
-                num_regions += 1
-                regions[num_regions] = [curr_region, len(avg_cos), sim_region/len(curr_region)]
+            if in_region and len(curr_region) >= reg_length:
+                mid = ceil(np.mean(curr_region))
+                if mid in regions:  # Skip if anchor already found for that position
+                    continue
+                regions[mid] = [curr_region, sim_region/len(curr_region)]
             curr_region, in_region, sim_region = [], False, 0
 
     return regions
@@ -118,15 +121,17 @@ def determine_regions(avg_cos: list, num_anchors: int) -> dict:
     :return: dict where key with list of positions and average cosine similarity as value
     """
 
-    # Find continuous regions (>= 2 positions) of relatively high cosine similarity
-    regions, num_regions = {}, 0
+    # Find continuous regions (start with >= 2 positions) of relatively high cosine similarity
+    regions, num_regions, reg_length = {}, 0, 2
 
     # Want at least num_anchors identified per family, may have to lower threshold to get them
     mean, std, count = np.mean(avg_cos), np.std(avg_cos), 0
     while num_regions < num_anchors and count < 10:
+        if count > 3:  # If still not enough regions, lower minimum region length
+            reg_length = 1
 
-        # Get regions with high cosine similarity
-        regions = get_region(avg_cos, regions, mean + std, num_regions)
+        # Get regions with high cosine similarity and filter out regions with same middle pos
+        regions = get_regions(avg_cos, regions, mean + std, reg_length)
 
         # Lower threshold and find more regions if not enough found
         num_regions = len(regions)
@@ -145,26 +150,15 @@ def get_anchors(family: str, regions: dict) -> np.ndarray:
     :return: array of anchor residues (embeddings)
     """
 
-    # Get average embedding
-    avg_embed = np.load(f'data/avg_embed/{family}/avg_embed.npy')
-
-    # For each set of regions, find anchor residues
-    anchors_pos = []
-    for reg in regions.values():
-
-        # Get middle position
-        mid = ceil((len(reg[0]) - 1)/2)
-        anchors_pos.append(reg[0][mid])
-
     # Log anchor positions
-    logging.info('Anchor positions: %s', anchors_pos)
+    logging.info('Anchor positions: %s', list(regions.keys()))
 
     # Grab embeddings from average embedding
+    avg_embed = np.load(f'data/avg_embed/{family}/avg_embed.npy')
     anchor_embed = []
-    for pos in anchors_pos:
+    for pos in list(regions.keys()):
         anchor_embed.append(avg_embed[pos])
 
-    # Return anchor embeddings
     return np.asarray(anchor_embed)
 
 
@@ -200,7 +194,7 @@ def main():
         regions = determine_regions(avg_cos, args.a)
 
         # Sort by average cosine similarity, highest to lowest and take top num regions
-        regions = dict(sorted(regions.items(), key=lambda item: item[1][2], reverse=True))
+        regions = dict(sorted(regions.items(), key=lambda item: item[1][1], reverse=True))
         regions = dict(list(regions.items())[:args.a])
 
         # Get anchor residues (embedding) for each sequence
