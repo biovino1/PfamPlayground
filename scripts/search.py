@@ -10,15 +10,44 @@ import argparse
 import datetime
 import logging
 import os
+import pickle
+from random import sample
 import numpy as np
+from Bio import SeqIO
 import torch
-from search_anchors import embed_query, search_results
 from util import load_model, Embedding, Transform
 
-log_filename = 'data/logs/search_anchors.log'  #pylint: disable=C0103
+log_filename = 'data/logs/search.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
 logging.basicConfig(filename=log_filename, filemode='w',
                      level=logging.INFO, format='%(message)s')
+
+
+def embed_query(
+    sequence: str, tokenizer, model, device: str, encoder: str, layer: int) -> Embedding:
+    """Returns the embedding of a fasta sequence.
+
+    :param sequence: path to fasta file containing query sequence
+    :param tokenizer: tokenizer
+    :param model: encoder model
+    :param device: cpu or gpu
+    :param encoder: prott5 or esm2
+    :param layer: layer to extract features from (if using esm2)
+    :return: Embedding object containing embedding of query sequence
+    """
+
+    # Get seqs from file and randomly sample one
+    seqs = {}
+    with open(sequence, 'r', encoding='utf8') as f:
+        for i, seq in enumerate(SeqIO.parse(f, 'fasta')):
+            seqs[i] = (seq.id, str(seq.seq))
+    seq = sample(list(seqs.values()), 1)[0]
+
+    # Initialize Embedding object and embed sequence
+    embed = Embedding(seq[0], seq[1], None)
+    embed.embed_seq(tokenizer, model, device, encoder, layer)
+
+    return embed
 
 
 def transform_embed(embed: Embedding, args: argparse.Namespace) -> Transform:
@@ -37,8 +66,56 @@ def transform_embed(embed: Embedding, args: argparse.Namespace) -> Transform:
     return transform
 
 
+def clan_results(query_fam: str, results_fams: list) -> int:
+    """Returns 1 if query and top result are in the same clan, 0 otherwise.
+
+    :param query_fam: family of query sequence
+    :param results_fams: list of families of top N results
+    :return: 1 if query and top result are in the same clan, 0 otherwise
+    """
+
+    with open('data/clans.pkl', 'rb') as file:
+        clans = pickle.load(file)
+    for fams in clans.values():
+        if query_fam in fams and results_fams[0] in fams:
+            return 1
+    return 0
+
+
+def search_results(query: str, results: dict, counts: dict) -> dict:
+    """Returns a dict of counts for matches, top n results, and same clan for all queries in a
+    search.
+
+    :param query: query sequence
+    :param results: dictionary of results from searching query against dcts
+    :param counts: dictionary of counts for matches, top n results, and same clan
+    :param top: number of results to return
+    :return: dict of counts for matches, top n results, and same clan
+    """
+
+    # Log time and similarity for top 5 results
+    logging.info('%s\n%s', datetime.datetime.now(), query)
+    for fam, sim in list(results.items())[:5]:
+        logging.info('%s,%s', fam, sim)
+
+    # See if query is in top results
+    results_fams = [fam.split('/')[0] for fam in results.keys()]
+    query_fam = query.split('/')[0]
+    counts['total'] += 1
+    if query_fam == results_fams[0]:  # Top result
+        counts['match'] += 1
+        return counts
+    if query_fam in results_fams:  # Top n results
+        counts['top'] += 1
+        return counts
+    counts['clan'] += clan_results(query_fam, results_fams)  # Same clan
+
+    return counts
+
+
 def main():
-    """Main
+    """Searches two different databases, first using dct vectors to filter out dissimilar sequences.
+    If top result is not same as query family, then searches embeddings database.
     """
 
     parser = argparse.ArgumentParser()
@@ -64,28 +141,28 @@ def main():
     counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
     direc = 'data/full_seqs'
     for fam in os.listdir(direc):
-        if fam not in dct_fams:
+        if fam not in dct_fams:  # Skip if family not in database
             continue
 
-        # Randomly sample one query from family and get it appropriate dct
+        # Randomly sample one query from family and get embedding and dct
         seq_file = f'{direc}/{fam}/seqs.fa'
-        embed = embed_query(seq_file, tokenizer, model, device, args)
+        embed = embed_query(seq_file, tokenizer, model, device, args.e, args.l)
         dct = transform_embed(embed, args)
         if dct is None:
             logging.info('%s\n%s\nQuery was too small for transformation dimensions',
                           datetime.datetime.now(), embed.embed[0])
             continue
 
-        # Search idct embeddings - check if top family is same as query family
-        # If so, continue to next query, otherwise search embeddings
+        # Search dct db - check if top family is same as query family
         results = dct.search(dct_db, args.t)
         results_fams = [fam.split('/')[0] for fam in results.keys()]
         if fam == results_fams[0]:
-            counts['total'] += 1
-            counts['match'] += 1
+            counts = search_results(f'{fam}/{dct.trans[0]}', results, counts)
             logging.info('DCT: Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
                       counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
             continue
+
+        # If top family is not same as query family, search anchors on top results from DCTs
         results = embed.search(emb_db, args.t, results_fams)
         counts = search_results(f'{fam}/{embed.embed[0]}', results, counts)
         logging.info('ANCHORS: Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',

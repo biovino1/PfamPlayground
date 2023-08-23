@@ -157,8 +157,6 @@ class Embedding:
             # np.load loads single line as 1D array, convert to 2D
             if len(embed) > 10:
                 embed = [embed]
-            if embed == []:  # no anchors
-                continue
 
             # Find most similary embedding in query to embedding in database
             for pos1 in embed:  # db embed
@@ -167,7 +165,10 @@ class Embedding:
                     sim_list.append(1-cityblock(pos1, pos2))
                 max_sim = max(sim_list)  # most similar position between the two
                 sims[fam] = sims.get(fam, []) + [max_sim]
-            sims[fam] = np.mean(sims[fam])  # overall similarity between the two
+            try:
+                sims[fam] = np.mean(sims[fam])  # overall similarity between the two
+            except KeyError:  # no anchors for that family
+                continue
 
         # Sort sims dict and return top n results
         sims = dict(sorted(sims.items(), key=lambda item: item[1], reverse=True)[0:top])
