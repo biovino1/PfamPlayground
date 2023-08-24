@@ -5,7 +5,6 @@ __author__ = "Ben Iovino"
 __date__ = "08/18/23"
 """
 
-
 import argparse
 import datetime
 import logging
@@ -24,46 +23,35 @@ logging.basicConfig(filename=log_filename, filemode='w',
 
 
 def embed_query(
-    sequence: str, tokenizer, model, device: str, encoder: str, layer: int) -> Embedding:
+    fam: str, tokenizer, model, device: str, args: argparse.Namespace) -> tuple:
     """Returns the embedding of a fasta sequence.
 
-    :param sequence: path to fasta file containing query sequence
+    :param fam: family of query sequence
     :param tokenizer: tokenizer
     :param model: encoder model
     :param device: cpu or gpu
-    :param encoder: prott5 or esm2
-    :param layer: layer to extract features from (if using esm2)
-    :return: Embedding object containing embedding of query sequence
+    :param args: command line arguments
+    :return: Embedding and Transform objects
     """
 
     # Get seqs from file and randomly sample one
     seqs = {}
-    with open(sequence, 'r', encoding='utf8') as f:
+    with open(f'data/full_seqs/{fam}/seqs.fa', 'r', encoding='utf8') as f:
         for i, seq in enumerate(SeqIO.parse(f, 'fasta')):
             seqs[i] = (seq.id, str(seq.seq))
     seq = sample(list(seqs.values()), 1)[0]
 
     # Initialize Embedding object and embed sequence
     embed = Embedding(seq[0], seq[1], None)
-    embed.embed_seq(tokenizer, model, device, encoder, layer)
+    embed.embed_seq(tokenizer, model, device, args.e, args.l)
 
-    return embed
-
-
-def transform_embed(embed: Embedding, args: argparse.Namespace) -> Transform:
-    """Returns the DCT of an embedded fasta sequence.
-
-    :param embed: Embedding object
-    :param args: argparse.Namespace object containing arguments
-    :return: Transform object containing dct representation of query sequence
-    """
-
+    # DCT embedding
     transform = Transform(embed.embed[0], embed.embed[1], None)
     transform.quant_2D(args.s1, args.s2)
     if transform.trans[1] is None:  # Skip if DCT is None
         return None  #\\NOSONAR
 
-    return transform
+    return embed, transform
 
 
 def clan_results(query_fam: str, results_fams: list) -> int:
@@ -139,15 +127,10 @@ def main():
 
     # Call query_search for every query sequence in a folder
     counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
-    direc = 'data/full_seqs'
-    for fam in os.listdir(direc):
-        if fam not in dct_fams:  # Skip if family not in database
-            continue
+    for fam in dct_fams:
 
-        # Randomly sample one query from family and get embedding and dct
-        seq_file = f'{direc}/{fam}/seqs.fa'
-        embed = embed_query(seq_file, tokenizer, model, device, args.e, args.l)
-        dct = transform_embed(embed, args)
+        # Get random sequence from family and embed/transform sequence
+        embed, dct = embed_query(fam, tokenizer, model, device, args)
         if dct is None:
             logging.info('%s\n%s\nQuery was too small for transformation dimensions',
                           datetime.datetime.now(), embed.embed[0])
