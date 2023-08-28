@@ -1,4 +1,6 @@
-"""Finds the most repsresentative sequence for each Pfam family from the seed database.
+"""Finds the most representative sequence for each Pfam family from the seed database.
+Sequence is chosen by finding the most common character at each position in the alignment
+and then choosing the sequence with the most common characters.
 
 __author__ = "Ben Iovino"
 __date__ = "08/25/23"
@@ -74,7 +76,7 @@ def find_rep(direc: str):
         rep_seq = most_com(seqs, chars)
 
         # Write most representative sequence to file
-        sequence = seqs[rep_seq].replace('.', '')
+        sequence = seqs[rep_seq].replace('.', '')  # Remove gaps
         os.mkdir(f'data/rep_seqs/{fam}')
         with open(f'data/rep_seqs/{fam}/seq.fa', 'w', encoding='utf8') as f:
             f.write(f'>{rep_seq}\n{sequence}')
