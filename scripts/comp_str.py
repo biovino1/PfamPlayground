@@ -6,7 +6,9 @@ __date__ = "08/24/23"
 """
 
 import os
-import time
+import subprocess
+import esm
+import torch
 from Bio import SeqIO
 
 
@@ -74,9 +76,9 @@ def get_query_seqs(missed_queries: dict) -> dict:
 
 
 def get_result_seqs(missed_queries: dict) -> dict:
-    """Returns a dict of sequences that represent the top search results.
+    """Returns a dict of sequences that represent the query family and top search results.
 
-    Ex. {'PAD_M/A0A669R6D0_PHACC': {'FN3_7': 'DAEPD', 'P4Ha_N': 'ALAML', 'Peptidase_M23_N': 'NHVN'}} 
+    Ex. {'PAD_M/A0A669R6D0_PHACC': {'PAD_M': 'DAEPD', 'P4Ha_N': 'ALAML', 'Peptidase_M23_N': 'NHVN'}} 
 
     :param missed_queries: dictionary of missed queries and their top search results
     :return: dict where key is query name and value is a dict where key is result name and value
@@ -85,10 +87,16 @@ def get_result_seqs(missed_queries: dict) -> dict:
 
     seqs = {}
     for key in missed_queries.keys():
-        seqs[key] = {}
-        for result in missed_queries[key]:
 
-            # Get representative sequence from file
+        # Get sequence of representative seq for query family
+        query_fam = key.split('/')[0]
+        seqs[key] = {}
+        with open(f'data/rep_seqs/{query_fam}/seq.fa', 'r', encoding='utf8') as f:
+            for record in SeqIO.parse(f, 'fasta'):
+                seqs[key][query_fam] = str(record.seq)
+
+        # Get representative sequences for top search results
+        for result in missed_queries[key]:
             with open(f'data/rep_seqs/{result}/seq.fa', 'r', encoding='utf8') as f:
                 for record in SeqIO.parse(f, 'fasta'):
                     seqs[key][result] = str(record.seq)
@@ -104,25 +112,55 @@ def predict_str(query_seqs: dict, missed_queries: dict):
     name and value is it's sequence
     """
 
+    model = esm.pretrained.esmfold_v1()
+    model = model.eval().cuda()
+
     # Make directory for query with six sequences -> query and top 5 results
     os.mkdir('data/structures')
     for query, seq in query_seqs.items():
         query_fam, query_seq = query.split('/')[0], query.split('/')[1]
-        print(query_fam)
         os.mkdir(f'data/structures/{query_fam}')
 
-        # Predict query seq
-        os.system(f'curl -X POST --data {seq} https://api.esmatlas.com/foldSequence/v1/pdb/ '
-                  f'> data/structures/{query_fam}/{query_seq}.pdb')
-        time.sleep(10)  # server is rate limited
+        # Predict structure of query sequence
+        with torch.no_grad():
+            output = model.infer_pdb(seq)
+        with open(f'data/structures/{query_fam}/query-{query_seq}.pdb',
+                   'w', encoding='utf8') as pdb:
+            pdb.write(output)
 
         # Predict each result
+        count = 0
         for result, result_seq in missed_queries[query].items():
-            os.system(f'curl -X POST --data {result_seq} '
-                       'https://api.esmatlas.com/foldSequence/v1/pdb/ '
-                        f'> data/structures/{query_fam}/{result}.pdb')
-            time.sleep(10)
-            break
+            with torch.no_grad():
+                output = model.infer_pdb(result_seq)
+            with open(f'data/structures/{query_fam}/result{count}-{result}.pdb',
+                        'w', encoding='utf8') as pdb:
+                pdb.write(output)
+            count += 1
+
+
+def compare_str() -> dict:
+    """Returns a dict of p-values from FATCAT structural alignment.
+
+    return: dict where key is query and value is a dict where key is result and value is p-value
+    """
+
+    pvalues = {}
+    for direc in os.listdir('data/structures'):
+
+        # Query is first then results are in order
+        files = sorted(os.listdir(f'data/structures/{direc}'))
+        query = f"{direc}/{files[0].split('-')[1].split('.')[0]}"  # query fam/seq
+        pvalues[query] = {}
+
+        # Compare query to each result (result0 is actually query family representative)
+        for file in files[1:]:
+            result = subprocess.getoutput(f'FATCAT -p1 data/structures/{direc}/{files[0]} '
+                      f'-p2 data/structures/{direc}/{file} -q')
+            result_name = file.split('-')[1].split('.')[0]
+            pvalues[query][result_name] = result.split('\n')[2].split()[1]
+
+    return pvalues
 
 
 def main():
@@ -137,6 +175,7 @@ def main():
 
     # Predict structure of query and top results
     predict_str(query_seqs, missed_queries)
+    compare_str()
 
 
 
