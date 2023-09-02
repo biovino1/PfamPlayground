@@ -5,11 +5,17 @@ __author__ = "Ben Iovino"
 __date__ = "08/24/23"
 """
 
+import logging
 import os
 import subprocess
 import esm
 import torch
 from Bio import SeqIO
+
+log_filename = 'data/logs/comp_str.log'  #pylint: disable=C0103
+os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+logging.basicConfig(filename=log_filename, filemode='w',
+                     level=logging.INFO, format='%(message)s')
 
 
 def parse_log(file: str) -> dict:
@@ -104,38 +110,59 @@ def get_result_seqs(missed_queries: dict) -> dict:
     return seqs
 
 
-def predict_str(query_seqs: dict, missed_queries: dict):
+def esm_fold(seq: str, sfile: str, model):
+    """Writes an esm-fold predicted structure to file.
+
+    :param seq: sequence to predict structure of
+    :param sfile: file to write structure to
+    :param model: esm-fold model
+    """
+
+    # Tried multiprocessing but only loaded on one GPU
+    if len(seq) > 800:
+        logging.info('Sequence too long')
+        return
+
+    # Predict and write
+    with torch.no_grad():
+        output = model.infer_pdb(seq)
+    with open(sfile, 'w', encoding='utf8') as pdb:
+        pdb.write(output)
+
+
+def predict_str(model, query_seqs: dict, missed_queries: dict):
     """Writes esm-fold predicted structures to file.
 
+    :param model: esm-fold model
     :param query_seqs: dict where key is query name and value is query sequence
     :param missed_queries: dict where key is query name and value is a dict where key is result
     name and value is it's sequence
     """
 
-    model = esm.pretrained.esmfold_v1()
-    model = model.eval().cuda()
+    direc = 'data/structures'
+    if not os.path.exists(direc):
+        os.mkdir(direc)
 
-    # Make directory for query with six sequences -> query and top 5 results
-    os.mkdir('data/structures')
+    # Each query calls 7 predictions: query, query family, and top 5 results from search
     for query, seq in query_seqs.items():
         query_fam, query_seq = query.split('/')[0], query.split('/')[1]
-        os.mkdir(f'data/structures/{query_fam}')
+
+        # Skip set of sequences if already predicted
+        if os.path.exists(f'{direc}/{query_fam}'):
+            continue
+        os.mkdir(f'{direc}/{query_fam}')
 
         # Predict structure of query sequence
-        with torch.no_grad():
-            output = model.infer_pdb(seq)
-        with open(f'data/structures/{query_fam}/query-{query_seq}.pdb',
-                   'w', encoding='utf8') as pdb:
-            pdb.write(output)
+        logging.info('Predicting %s', f'{query_fam}/{query_seq}')
+        filename = f'{direc}/{query_fam}/query-{query_seq}.pdb'
+        esm_fold(seq, filename, model)
 
-        # Predict each result
+        # Predict representative sequences for query/result families
         count = 0
         for result, result_seq in missed_queries[query].items():
-            with torch.no_grad():
-                output = model.infer_pdb(result_seq)
-            with open(f'data/structures/{query_fam}/result{count}-{result}.pdb',
-                        'w', encoding='utf8') as pdb:
-                pdb.write(output)
+            logging.info('Predicting %s', result)
+            filename = f'{direc}/{query_fam}/result{count}-{result}.pdb'
+            esm_fold(result_seq, filename, model)
             count += 1
 
 
@@ -164,6 +191,9 @@ def compare_str() -> dict:
 
 
 def main():
+    """Initializes esm fold model to predict structures of missed queries and their top search
+    results. Then compares predicted structures using FATCAT.
+    """
 
     # Get missed queries and their top search results
     results = parse_log('data/logs/search.log')
@@ -173,10 +203,13 @@ def main():
     query_seqs = get_query_seqs(missed_queries)
     missed_queries = get_result_seqs(missed_queries)
 
-    # Predict structure of query and top results
-    predict_str(query_seqs, missed_queries)
+    # Load model and predict/compare structures
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  #pylint: disable=E1101
+    model = esm.pretrained.esmfold_v1()
+    model = model.eval().cuda()
+    model.to(device)
+    predict_str(model, query_seqs, missed_queries)
     compare_str()
-
 
 
 if __name__ == '__main__':
