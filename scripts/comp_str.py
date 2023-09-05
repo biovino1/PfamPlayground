@@ -177,6 +177,8 @@ def compare_str() -> dict:
 
         # Query is first then results are in order
         files = sorted(os.listdir(f'data/structures/{direc}'))
+        if files == []:  # Skip empty directories (structures too big to fold)
+            continue
         query = f"{direc}/{files[0].split('-')[1].split('.')[0]}"  # query fam/seq
         pvalues[query] = {}
 
@@ -185,7 +187,15 @@ def compare_str() -> dict:
             result = subprocess.getoutput(f'FATCAT -p1 data/structures/{direc}/{files[0]} '
                       f'-p2 data/structures/{direc}/{file} -q')
             result_name = file.split('-')[1].split('.')[0]
-            pvalues[query][result_name] = result.split('\n')[2].split()[1]
+            try:
+                pvalues[query][result_name] = result.split('\n')[2].split()[1]
+            except IndexError:  # FATCAT failed to align
+                continue
+
+        # Write pvalues to file
+        with open('data/pvalues.txt', 'a', encoding='utf8') as pfile:
+            for result, pvalue in pvalues[query].items():
+                pfile.write(f'{query} {result} {pvalue}\n')
 
     return pvalues
 
