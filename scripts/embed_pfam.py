@@ -165,11 +165,11 @@ def main():
     parser.add_argument('-e', type=str, default='esm2')
     parser.add_argument('-f', type=str, default='data/families_nogaps')
     parser.add_argument('-g', type=int, nargs='+', default=[1])
-    parser.add_argument('-l', type=int, default=10)
+    parser.add_argument('-l', type=int, default=17)
     parser.add_argument('-p', type=int, default=1)
     parser.add_argument('-s1', type=int, default=8)
     parser.add_argument('-s2', type=int, default=80)
-    parser.add_argument('-t', type=str, default='transform')
+    parser.add_argument('-t', type=str, default='embed')
     args = parser.parse_args()
 
     if args.c == 'cpu':

@@ -46,13 +46,13 @@ dct_avg.py uses the inverse discrete cosine transform to compress the average em
 # SEARCHING FOR HOMOLOGOUS SEQUENCES
 **************************************************************************************************************
 
-search_anchors.py is used to test many queries (1 random sequence from each family in Pfam.fasta) at once
-against the anchors. It reports the total number of searches performed, the number that found a match, the
-number that found a match in the top N results, and the number where the first result was not the correct
-family but found in the same clan as the correct family.
+search.py is used to test many queries (1 random sequence from each family in Pfam.fasta) at once against a
+database of DCT's representing each family. It reports the total number of searches performed, the number that
+found a match, the number that found a match in the top N results, and the number where the first result was
+not the correct family but found in the same clan as the correct family. 
 
-search_dct.py is also used to test many queries at once against the iDCT average embeddings. It reports the
-same results as search_anchors.py.
+Using the top results from this DCT search, it can then search against a filtered set of anchor positions
+from the original embeddings.
 
 **************************************************************************************************************
 # SEARCH RESULTS
@@ -72,13 +72,22 @@ each family, we can reduce search time to less than 0.1 seconds per query with a
 on par with anchor searching and over 100x faster. To improve accuracy, we can concatenate the transformed
 average embeddings from multiple layers of the encoder to produce a more informative representation of the family.
 
-Embeddings from layer 17 of ESM2-t36-3B with DCT dimensions of 8x80 were found to produce the most accurate
-search results yet. We have tried concatenating embeddings from multiple layers, but this has not produced any
-more accurate search results. It has been found that most of the families missed during searches have a below
-average number of sequences in the Pfam-A.seed database, or have on average shorter sequences. This leads to
-representations that are not as informative as those for families with more sequences or longer sequences. To
-remedy this we can take a higher sample of sequences from the Pfam-A.full database. Although they are not
-aligned, we can embed each sequence, find the DCT, and then average the DCTs, as opposed to averaging the
-consensus embedding where consensus positions were determined from the alignment. Earlier experiments found that
-the method of averaging does not significantly change search results when the number of sequences per family
-remains the same. By adding more sequences, perhaps the average embedding will be improved.
+Embeddings from layer 17 of ESM2-t36-3B with DCT dimensions of 8x75 were found to produce the most accurate
+search results yet, around 80%. We have tried concatenating embeddings from multiple layers, as each layer captures
+different information about the sequence, however this led to a decrease in accuracy relative to using only layer 17.
+
+It has been noticed that most of the families missed during searches have a below average number of sequences
+in the Pfam-A.seed database, or have on average shorter sequences. This could lead to DCT representations that
+are not as informative as those for families with more/longer sequences. 
+
+To remedy this we can take a higher sample of sequences from the Pfam-A.full database. Although these sequences
+are not aligned, we can embed each sequence, find it's DCT, and then average all DCTs in a family, as opposed to
+averaging the consensus embedding where consensus positions were determined from the alignment. Earlier experiments
+found that the method of averaging does not significantly change search results when the number of sequences per
+family remains the same. Searching against these reinforced DCT's gave us an accuracy of around 87%, a decent
+improvement. However, because we are searching with sequences from the Pfam-A.full database, it is possible that
+a query sequence has been included in the average DCT for its family and is inflating the accuracy.
+
+We have been using the Manhattan distance to compare DCT's. We noticed that the distribution of distances between
+a query sequence and the average DCT for its family is often times much different than the distribution of distances
+between a query sequence and all other DCT's. This can help us decide if a search result is a true positive or not.
