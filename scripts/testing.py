@@ -6,12 +6,14 @@ __date__ = "07/20/23"
 
 import logging
 import os
+import datetime
+from random import sample
 import numpy as np
 import torch
 from util import load_model, Embedding, Transform
 from Bio import SeqIO
-from random import sample
-import datetime
+from search import search_results
+from scipy.spatial.distance import cityblock
 
 log_filename = 'data/logs/testing.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
@@ -76,50 +78,59 @@ def test_transforms():
 
 
 def embed_query(
-    sequence: str, tokenizer, model, device: str, encoder: str, layer: int) -> np.ndarray:
+    fam: str, tokenizer, model, device: str) -> tuple:
     """Returns the embedding of a fasta sequence.
 
-    :param sequence: path to fasta file containing query sequence
+    :param fam: family of query sequence
     :param tokenizer: tokenizer
     :param model: encoder model
     :param device: cpu or gpu
-    :param encoder: prott5 or esm2
-    :param layer: layer to extract features from (if using esm2)
-    :return: embedding of query sequence
+    :param args: command line arguments
+    :return: Embedding and Transform objects
     """
 
-    # Get seq from file
-    seq = ()
-    with open(sequence, 'r', encoding='utf8') as f:
-        for seq in SeqIO.parse(f, 'fasta'):
-            seq = (seq.id, str(seq.seq))
+    # Get seqs from file and randomly sample one
+    seqs = {}
+    with open(f'data/full_seqs/{fam}/seqs.fa', 'r', encoding='utf8') as f:
+        for i, seq in enumerate(SeqIO.parse(f, 'fasta')):
+            seqs[i] = (seq.id, str(seq.seq))
+    seq = sample(list(seqs.values()), 1)[0]
 
     # Initialize Embedding object and embed sequence
     embed = Embedding(seq[0], seq[1], None)
-    embed.embed_seq(tokenizer, model, device, encoder, layer)
+    embed.embed_seq(tokenizer, model, device, 'esm2', 17)
 
-    return embed.embed[1]
-
-
-def get_transform(seq: str, tokenizer, model, device: str, transforms, layer) -> Transform:
-    """Returns the DCT of an embedded fasta sequence.
-
-    :param seq: path to fasta file containing query sequence
-    :param tokenizer: tokenizer
-    :param model: encoder model
-    :param device: cpu or gpu
-    :return: Transform object containing dct representation of query sequence
-    """
-
-    # Get DCT for each layer
-    query = '/'.join(seq.split('/')[2:])
-    embed = embed_query(seq, tokenizer, model, device, 'esm2', layer)
-    embed = Transform(query, np.array(embed), None)
-    embed.quant_2D(transforms[0], transforms[1])
-    if embed.trans[1] is None:  # Skip if DCT is None
+    # DCT embedding
+    transform = Transform(embed.embed[0], embed.embed[1], None)
+    transform.quant_2D(8, 75)
+    if transform.trans[1] is None:  # Skip if DCT is None
         return None  #\\NOSONAR
 
-    return embed
+    return embed, transform
+
+
+def search(dct: Transform, search_db: np.ndarray, top: int) -> dict:
+    """Searches transform against a database of transforms:
+
+    :param database: array of transforms
+    :param top: number of results to return
+    :return: dict where keys are family names and values are similarity scores
+    """
+
+    # Search query against every dct embedding
+    sims = {}
+    for transform in search_db:
+        fam, db_dct = transform[0], transform[1]  # family name, dct vector for family
+        dist =  1-cityblock(db_dct, dct.trans[1]) # compare query to dct
+
+        # If distance is within range of family's average dct, add to sims
+        if transform[2][2][0] < dist < transform[2][2][-1]:
+            sims[fam] = dist
+
+    # Return first n results
+    sims = dict(sorted(sims.items(), key=lambda item: item[1], reverse=True)[0:top])
+
+    return sims
 
 
 def test_search(): #\\NOSONAR
@@ -130,43 +141,25 @@ def test_search(): #\\NOSONAR
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
     tokenizer, model = load_model('esm2', device)
 
-    db1 = np.load('data/esm2_13_880_avg.npy', allow_pickle=True)
-    db2 = np.load('data/esm2_17_875_avg.npy', allow_pickle=True)
-    db3 = np.load('data/esm2_25_880_avg.npy', allow_pickle=True)
-    dbs = [db1, db2, db3]
-    transforms = [(8, 80), (8, 75), (8, 80)]
-    layers = [13, 17, 25]
-    thresholds = [6.08, 6.80, 7.48]
+    # DCT database
+    dct_db = np.load('data/dct_stats.npy', allow_pickle=True)
+    dct_fams = [transform[0] for transform in dct_db]
 
-    direc = 'data/full_seqs'
-    for fam in os.listdir(direc):
-        results_list = []
-        for i, database in enumerate(dbs):
-            search_fams = [transform[0] for transform in database]
-            if fam not in search_fams:
-                break
+    counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
+    for fam in dct_fams:
 
-            # Randomly sample one query from family and get it appropriate dct
-            queries = os.listdir(f'{direc}/{fam}')
-            query = sample(queries, 1)[0]
-            seq_file = f'{direc}/{fam}/{query}'
-            query = get_transform(seq_file, tokenizer, model, device, transforms[i], layers[i])
-            if query is None:
-                logging.info('%s\n%s\nQuery was too small for transformation dimensions',
-                          datetime.datetime.now(), query)
-                break
+        # Get random sequence from family and embed/transform sequence
+        embed, dct = embed_query(fam, tokenizer, model, device)
+        if dct is None:
+            logging.info('%s\n%s\nQuery was too small for transformation dimensions',
+                          datetime.datetime.now(), embed.embed[0])
+            continue
 
-            # Search for query in database
-            results = query.search(database, 100)
-            if results[0][1] > thresholds[i]:
-                logging.info('Query %s was found in %s with score %s',
-                              query.trans[0], fam, results[0][1])
-                break
-            top_res = results[0:5]
-            top_res = [res[0] for res in top_res]
-            results_list.extend(top_res)
-            if i == 2:
-                logging.info('Query %s not found, results: %s', query.trans[0], results_list)
+        # Search dct db - check if top family is same as query family
+        results = search(dct, dct_db, 100)
+        counts = search_results(f'{fam}/{dct.trans[0]}', results, counts)
+        logging.info('DCT: Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
+                      counts['total'], counts['match'], 100, counts['top'], counts['clan'])
 
 
 def main():
