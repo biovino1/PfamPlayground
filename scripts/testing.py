@@ -109,7 +109,7 @@ def embed_query(
     return embed, transform
 
 
-def search(dct: Transform, search_db: np.ndarray, top: int) -> dict:
+def search(dct: Transform, search_db: np.ndarray) -> dict:
     """Searches transform against a database of transforms:
 
     :param database: array of transforms
@@ -124,11 +124,12 @@ def search(dct: Transform, search_db: np.ndarray, top: int) -> dict:
         dist =  1-cityblock(db_dct, dct.trans[1]) # compare query to dct
 
         # If distance is within range of family's average dct, add to sims
-        if transform[2][2][0] < dist < transform[2][2][-1]:
+        rang = repr(transform[2][2]).strip('range(').strip(')')  # my fault for using range object
+        if int(rang.split(',')[0]) < dist < int(rang.split(',')[1]):
             sims[fam] = dist
 
     # Return first n results
-    sims = dict(sorted(sims.items(), key=lambda item: item[1], reverse=True)[0:top])
+    sims = dict(sorted(sims.items(), key=lambda item: item[1], reverse=True))
 
     return sims
 
@@ -156,10 +157,10 @@ def test_search(): #\\NOSONAR
             continue
 
         # Search dct db - check if top family is same as query family
-        results = search(dct, dct_db, 100)
+        results = search(dct, dct_db)
         counts = search_results(f'{fam}/{dct.trans[0]}', results, counts)
         logging.info('DCT: Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
-                      counts['total'], counts['match'], 100, counts['top'], counts['clan'])
+                      counts['total'], counts['match'], len(results), counts['top'], counts['clan'])
 
 
 def main():
