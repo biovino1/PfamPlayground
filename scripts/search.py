@@ -142,8 +142,7 @@ def main():
         if fam == results_fams[0]:
             counts = search_results(f'{fam}/{dct.trans[0]}', results, counts)
             logging.info('DCT: Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
-                      counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
-            continue
+                        counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
 
         # If top family is not same as query family, search anchors on top results from DCTs
         results = embed.search(emb_db, args.t, results_fams)

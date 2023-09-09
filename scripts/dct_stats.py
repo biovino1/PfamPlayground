@@ -4,9 +4,15 @@ __author__ = "Ben Iovino"
 __date__ = "09/06/23"
 """
 
+import logging
 import os
 import numpy as np
 from scipy.spatial.distance import cityblock
+
+log_filename = 'data/logs/dct_stats.log'  #pylint: disable=C0103
+os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+logging.basicConfig(filename=log_filename, filemode='w',
+                     level=logging.INFO, format='%(asctime)s %(message)s')
 
 
 def dct_dist(dct_db: str, tdirec: str) -> list:
@@ -19,9 +25,10 @@ def dct_dist(dct_db: str, tdirec: str) -> list:
 
     dct_db = np.load(dct_db, allow_pickle=True)
     dcts = []
-    for fam in os.listdir(tdirec):
+    for i, fam in enumerate(os.listdir(tdirec)):
 
         # Get avg dct and embeds for fam
+        logging.info('Calculating stats for %s %s...', fam, i)
         transforms = np.load(f'{tdirec}/{fam}/transform.npy', allow_pickle=True)
         for avg in dct_db:
             if avg[0] == fam:
