@@ -54,6 +54,23 @@ def embed_query(
     return embed, transform
 
 
+def get_fams(results: dict) -> list:
+    """Returns a list of family names from a dictionary of search results:
+
+    :param results: dict where key is family name and value is similarity score
+    :return: list of family names
+    """
+
+    result_fams = []
+    for name in results.keys():
+        if '_cluster' in name:
+            result_fams.append('_'.join(name.split('_')[:-1]))
+        else:
+            result_fams.append(name)
+
+    return result_fams
+
+
 def clan_results(query_fam: str, results_fams: list) -> int:
     """Returns 1 if query and top result are in the same clan, 0 otherwise.
 
@@ -87,7 +104,7 @@ def search_results(query: str, results: dict, counts: dict) -> dict:
         logging.info('%s,%s', fam, sim)
 
     # See if query is in top results
-    results_fams = [fam.split('/')[0] for fam in results.keys()]
+    results_fams = get_fams(results)
     query_fam = query.split('/')[0]
     counts['total'] += 1
     if query_fam == results_fams[0]:  # Top result
@@ -116,8 +133,8 @@ def main():
     """
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-dct', type=str, default='data/esm2_17_875_avg.npy')
-    parser.add_argument('-emb', type=str, default='data/anchors.npy')
+    parser.add_argument('-dct', type=str, default='data/esm2_17_875_clusters.npy')
+    parser.add_argument('-emb', type=str, default='')
     parser.add_argument('-e', type=str, default='esm2')
     parser.add_argument('-l', type=int, default=17)
     parser.add_argument('-t', type=int, default=100)
@@ -132,7 +149,8 @@ def main():
     # Load embed/dct database
     dct_db = np.load(args.dct, allow_pickle=True)
     dct_fams = [transform[0] for transform in dct_db]
-    emb_db = np.load(args.emb, allow_pickle=True)
+    if args.emb != '':
+        emb_db = np.load(args.emb, allow_pickle=True)
 
     # Call query_search for every query sequence in a folder
     counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
@@ -147,7 +165,7 @@ def main():
 
         # Search dct db - check if top family is same as query family
         results = dct.search(dct_db, args.t)
-        results_fams = [fam.split('/')[0] for fam in results.keys()]
+        results_fams = get_fams(results)
         if fam == results_fams[0] or args.emb == '':
             counts = search_results(f'{fam}/{dct.trans[0]}', results, counts)
             logging.info('DCT: Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
