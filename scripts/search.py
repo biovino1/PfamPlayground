@@ -104,6 +104,15 @@ def search_results(query: str, results: dict, counts: dict) -> dict:
 def main():
     """Searches two different databases, first using dct vectors to filter out dissimilar sequences.
     If top result is not same as query family, then searches embeddings database.
+
+    args:
+        -dct: database of dct vectors
+        -emb: database of embeddings (leave empty if only searching dct)
+        -e: encoder model
+        -l: layer of model to use (for esm2 only)
+        -t: number of results to return from search
+        -s1: first dimension of dct
+        -s2: second dimension of dct
     """
 
     parser = argparse.ArgumentParser()
@@ -139,10 +148,11 @@ def main():
         # Search dct db - check if top family is same as query family
         results = dct.search(dct_db, args.t)
         results_fams = [fam.split('/')[0] for fam in results.keys()]
-        if fam == results_fams[0]:
+        if fam == results_fams[0] or args.emb == '':
             counts = search_results(f'{fam}/{dct.trans[0]}', results, counts)
             logging.info('DCT: Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
                         counts['total'], counts['match'], args.t, counts['top'], counts['clan'])
+            continue
 
         # If top family is not same as query family, search anchors on top results from DCTs
         results = embed.search(emb_db, args.t, results_fams)

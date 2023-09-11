@@ -4,11 +4,17 @@ __author__ = "Ben Iovino"
 __date__ = "09/07/23"
 """
 
+import logging
 import os
 import pandas as pd
 import numpy as np
 from scipy.cluster.hierarchy import linkage
 from scipy.cluster.hierarchy import fcluster
+
+log_filename = 'data/logs/dct_cluster.log'  #pylint: disable=C0103
+os.makedirs(os.path.dirname(log_filename), exist_ok=True)
+logging.basicConfig(filename=log_filename, filemode='w',
+                     level=logging.INFO, format='%(message)s')
 
 
 def make_matrix(transforms: list) -> pd.DataFrame:
@@ -23,8 +29,9 @@ def make_matrix(transforms: list) -> pd.DataFrame:
     features = []
     for i in range(len(transforms)):  #pylint: disable=C0200
         dct = transforms[i]
-        families.append(dct[0])
-        features.append(dct[1])
+        if isinstance(dct[1], np.ndarray):  # can be NoneType if seq too small for DCT
+            families.append(dct[0])
+            features.append(dct[1])
 
     # Make a dataframe and cluster
     dct_df = pd.DataFrame(features, index=families,
@@ -63,7 +70,10 @@ def get_avgs(tdirec: str, dct_db: str):
 
     dcts = []
     for fam in os.listdir(tdirec):
+        logging.info('Clustering %s...', fam)
         transforms = np.load(f'{tdirec}/{fam}/transform.npy', allow_pickle=True)
+        if len(transforms) <= 3:  # No point in clustering a few DCT's
+            continue
         dct_df = make_matrix(transforms)
         avg_dcts = cluster_dcts(dct_df)
 
