@@ -14,6 +14,8 @@ from util import load_model, Embedding, Transform
 from Bio import SeqIO
 from search import search_results
 from scipy.spatial.distance import cityblock
+from cons_seq import count_chars
+from avg_embed import cons_pos, get_embed, average_embed
 
 log_filename = 'data/logs/testing.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
@@ -163,12 +165,84 @@ def test_search(): #\\NOSONAR
                       counts['total'], counts['match'], len(results), counts['top'], counts['clan'])
 
 
+def most_avg(seqs: dict, chars: dict, fam: str) -> str:
+    """Returns most average sequence for a family based on character counts at each position.
+    """
+
+    scores = {}
+    for seq in seqs.keys():
+        scores[seq] = 0
+        sequence = seqs[seq]
+        for i, char in enumerate(sequence):
+            if char in chars[i]:
+                scores[seq] += 1
+
+    # Sort scores and find sequence in the middle
+    scores = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
+    seq = list(scores.keys())[len(scores)//2]
+
+    # Write scores to file
+    with open('data/queries.txt', 'a', encoding='utf8') as qfile:
+        qfile.write(f'{fam}/{seq}\n')
+
+    return seq
+
+
+def get_seqs(family: str, seqs: dict) -> dict:
+    """Returns a dictionary of sequences for a given Pfam family.
+
+    :param family: name of Pfam family
+    :param seqs: dict where seq id is key with sequence as value
+    :return: seq id is key with sequence as value
+    """
+
+    sequences = {}
+    with open(f'data/families_gaps/{family}/seqs.fa', 'r', encoding='utf8') as file:
+        for record in SeqIO.parse(file, 'fasta'):
+            if record.id == seqs[family]:
+                continue
+            sequences[record.id] = record.seq  # Add sequence to dictionary
+
+    return sequences
+
+
+def mid_seq(direc: str):
+    """Getting most average sequence for each family in directory
+    """
+
+    # For each family in directory, get most average sequence
+    avg_seqs = {}
+    for fam in os.listdir(direc):
+
+        # Read sequence file
+        seqs = {}
+        with open(f'{direc}/{fam}/seqs.fa', 'r', encoding='utf8') as f:
+            for seq in SeqIO.parse(f, 'fasta'):
+                if seq.id == 'consensus':
+                    continue
+                seqs[seq.id] = str(seq.seq)
+
+        # Count characters at each position and find which sequence has most common characters
+        chars = count_chars(seqs)
+        seq = most_avg(seqs, chars, fam)
+        avg_seqs[fam] = seq
+
+        # Get sequences and their positions in consensus
+        sequences = get_seqs(fam, avg_seqs)
+        positions = cons_pos(sequences)
+
+        # Get embeddings
+        embed_direc = f'/data/biovino/esm2_17_embed/{fam}'
+        embeddings = get_embed(embed_direc, sequences)
+        average_embed(fam, positions, embeddings)
+
+
 def main():
     """Main calls test functions.
     """
 
 
-    test_search()
+    mid_seq('data/families_gaps')
 
 
 if __name__ == '__main__':

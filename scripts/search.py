@@ -48,8 +48,6 @@ def embed_query(
     # DCT embedding
     transform = Transform(embed.embed[0], embed.embed[1], None)
     transform.quant_2D(args.s1, args.s2)
-    if transform.trans[1] is None:  # Skip if DCT is None
-        return None  #\\NOSONAR
 
     return embed, transform
 
@@ -148,17 +146,16 @@ def main():
 
     # Load embed/dct database
     dct_db = np.load(args.dct, allow_pickle=True)
-    dct_fams = [transform[0] for transform in dct_db]
     if args.emb != '':
         emb_db = np.load(args.emb, allow_pickle=True)
 
     # Call query_search for every query sequence in a folder
     counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
-    for fam in dct_fams:
+    for fam in os.listdir('data/full_seqs'):
 
         # Get random sequence from family and embed/transform sequence
         embed, dct = embed_query(fam, tokenizer, model, device, args)
-        if dct is None:
+        if dct.trans[1] is None:
             logging.info('%s\n%s\nQuery was too small for transformation dimensions',
                           datetime.datetime.now(), embed.embed[0])
             continue
