@@ -15,7 +15,7 @@ from Bio import SeqIO
 from search import search_results
 from scipy.spatial.distance import cityblock
 from cons_seq import count_chars
-from avg_embed import cons_pos, get_embed, average_embed
+from avg_embed import cons_pos
 
 log_filename = 'data/logs/testing.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
@@ -165,6 +165,9 @@ def test_search(): #\\NOSONAR
                       counts['total'], counts['match'], len(results), counts['top'], counts['clan'])
 
 
+### TESTING AVERAGE EMBEDDING ###
+
+
 def most_avg(seqs: dict, chars: dict, fam: str) -> str:
     """Returns most average sequence for a family based on character counts at each position.
     """
@@ -206,12 +209,83 @@ def get_seqs(family: str, seqs: dict) -> dict:
     return sequences
 
 
+def get_embed(direc: str, sequences: dict, avg_seqs, fam) -> dict:
+    """Returns a dictionary of embeddings corresponding to the consensus positions for
+    each sequence.
+
+    :param family: name of Pfam family
+    :param sequences: dict where seq id is key with sequence as value
+    :return: dict where seq id is key with list of embeddings as value
+    """
+
+    # Load embeddings from file
+    embeddings = {}
+    embed = np.load(f'{direc}/embed.npy', allow_pickle=True)
+    for sid, emb in embed:
+        if avg_seqs[fam] == sid:
+            print(f'skipping {sid} in {fam}')
+            continue
+        embeddings[sid] = emb
+
+    # Pad embeddings to match length of consensus sequence
+    for seqid, embed in embeddings.items():
+        sequence = sequences[seqid]
+
+        # Pad embeddings with 0s where there are gaps in the aligned sequences
+        count, pad_emb = 0, []
+        for pos in sequence:
+            if pos == '.':
+                pad_emb.append(0)
+            elif pos != '.':
+                pad_emb.append(embed[count])
+                count += 1
+        embeddings[seqid] = pad_emb
+
+    return embeddings
+
+
+def average_embed(family: str, positions: dict, embeddings: dict):
+    """Saves a list of vectors that represents the average embedding for each
+    position in the consensus sequence for each Pfam family.
+
+    :param family: name of Pfam family
+    :param sequences: dict where seq id is key with sequence as value
+    :param positions: dict where seq id is key with list of positions as value
+    """
+
+    # Create a dict of lists where each list contains the embeddings for a position in the consensus
+    seq_embed = {}
+    for seqid, position in positions.items():  # Go through positions for each sequence
+        for pos in position:
+            if pos not in seq_embed:  # Initialize key and value
+                seq_embed[pos] = []
+            seq_embed[pos].append(embeddings[seqid][pos])  # Add embedding to list for that pos
+
+    # Sort dictionary by key (out of order for some reason)
+    seq_embed = dict(sorted(seq_embed.items()))
+
+    # Move through each position (list of embeddings) and average them
+    avg_embed = []
+    for pos, embed in seq_embed.items():
+        avg_embed.append(np.mean(embed, axis=0))  # Find mean for each position (float)
+
+    # Perform idct on avg_embed
+    avg_embed = Transform(family, np.array(avg_embed), None)
+    try:
+        avg_embed.quant_2D(8, 75)
+    except ValueError:
+        return None
+
+    return avg_embed.trans
+
+
 def mid_seq(direc: str):
     """Getting most average sequence for each family in directory
     """
 
     # For each family in directory, get most average sequence
     avg_seqs = {}
+    dcts = []
     for fam in os.listdir(direc):
 
         # Read sequence file
@@ -232,9 +306,14 @@ def mid_seq(direc: str):
         positions = cons_pos(sequences)
 
         # Get embeddings
-        embed_direc = f'/data/biovino/esm2_17_embed/{fam}'
-        embeddings = get_embed(embed_direc, sequences)
-        average_embed(fam, positions, embeddings)
+        embed_direc = f'data/esm2_17_embed/{fam}'
+        embeddings = get_embed(embed_direc, sequences, avg_seqs, fam)
+        transform = average_embed(fam, positions, embeddings)
+        if isinstance(transform, np.ndarray):
+            dcts.append(transform)
+
+    # Save avg transform to file
+    np.save('data/TEST_esm2_17_875_avg.npy', dcts)
 
 
 def main():
