@@ -14,7 +14,7 @@ from util import load_model, Embedding, Transform
 from Bio import SeqIO
 from search import search_results
 from scipy.spatial.distance import cityblock
-from cons_seq import count_chars
+from count_seq import count_chars
 from avg_embed import cons_pos
 
 log_filename = 'data/logs/testing.log'  #pylint: disable=C0103
