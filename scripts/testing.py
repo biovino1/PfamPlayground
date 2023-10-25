@@ -14,8 +14,6 @@ from util import load_model, Embedding, Transform
 from Bio import SeqIO
 from search import search_results
 from scipy.spatial.distance import cityblock
-from count_seq import count_chars
-from avg_embed import cons_pos
 
 log_filename = 'data/logs/testing.log'  #pylint: disable=C0103
 os.makedirs(os.path.dirname(log_filename), exist_ok=True)
@@ -167,153 +165,77 @@ def test_search(): #\\NOSONAR
 
 ### TESTING AVERAGE EMBEDDING ###
 
-
-def most_avg(seqs: dict, chars: dict, fam: str) -> str:
-    """Returns most average sequence for a family based on character counts at each position.
+def avg_dct():
+    """
     """
 
-    scores = {}
-    for seq in seqs.keys():
-        scores[seq] = 0
-        sequence = seqs[seq]
-        for i, char in enumerate(sequence):
-            if char in chars[i]:
-                scores[seq] += 1
+    # Get list of queries that we don't want to add to database
+    queries = []
+    with open('data/queries.txt', 'r', encoding='utf8') as f:
+        for line in f:
+            queries.append(line.split('/')[1].strip('\n'))
 
-    # Sort scores and find sequence in the middle
-    scores = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
-    seq = list(scores.keys())[len(scores)//2]
-
-    # Write scores to file
-    with open('data/queries.txt', 'a', encoding='utf8') as qfile:
-        qfile.write(f'{fam}/{seq}\n')
-
-    return seq
-
-
-def get_seqs(family: str, seqs: dict) -> dict:
-    """Returns a dictionary of sequences for a given Pfam family.
-
-    :param family: name of Pfam family
-    :param seqs: dict where seq id is key with sequence as value
-    :return: seq id is key with sequence as value
-    """
-
-    sequences = {}
-    with open(f'data/families_gaps/{family}/seqs.fa', 'r', encoding='utf8') as file:
-        for record in SeqIO.parse(file, 'fasta'):
-            if record.id == seqs[family]:
-                continue
-            sequences[record.id] = record.seq  # Add sequence to dictionary
-
-    return sequences
-
-
-def get_embed(direc: str, sequences: dict, avg_seqs, fam) -> dict:
-    """Returns a dictionary of embeddings corresponding to the consensus positions for
-    each sequence.
-
-    :param family: name of Pfam family
-    :param sequences: dict where seq id is key with sequence as value
-    :return: dict where seq id is key with list of embeddings as value
-    """
-
-    # Load embeddings from file
-    embeddings = {}
-    embed = np.load(f'{direc}/embed.npy', allow_pickle=True)
-    for sid, emb in embed:
-        if avg_seqs[fam] == sid:
-            print(f'skipping {sid} in {fam}')
-            continue
-        embeddings[sid] = emb
-
-    # Pad embeddings to match length of consensus sequence
-    for seqid, embed in embeddings.items():
-        sequence = sequences[seqid]
-
-        # Pad embeddings with 0s where there are gaps in the aligned sequences
-        count, pad_emb = 0, []
-        for pos in sequence:
-            if pos == '.':
-                pad_emb.append(0)
-            elif pos != '.':
-                pad_emb.append(embed[count])
-                count += 1
-        embeddings[seqid] = pad_emb
-
-    return embeddings
-
-
-def average_embed(family: str, positions: dict, embeddings: dict):
-    """Saves a list of vectors that represents the average embedding for each
-    position in the consensus sequence for each Pfam family.
-
-    :param family: name of Pfam family
-    :param sequences: dict where seq id is key with sequence as value
-    :param positions: dict where seq id is key with list of positions as value
-    """
-
-    # Create a dict of lists where each list contains the embeddings for a position in the consensus
-    seq_embed = {}
-    for seqid, position in positions.items():  # Go through positions for each sequence
-        for pos in position:
-            if pos not in seq_embed:  # Initialize key and value
-                seq_embed[pos] = []
-            seq_embed[pos].append(embeddings[seqid][pos])  # Add embedding to list for that pos
-
-    # Sort dictionary by key (out of order for some reason)
-    seq_embed = dict(sorted(seq_embed.items()))
-
-    # Move through each position (list of embeddings) and average them
-    avg_embed = []
-    for pos, embed in seq_embed.items():
-        avg_embed.append(np.mean(embed, axis=0))  # Find mean for each position (float)
-
-    # Perform idct on avg_embed
-    avg_embed = Transform(family, np.array(avg_embed), None)
-    try:
-        avg_embed.quant_2D(8, 75)
-    except ValueError:
-        return None
-
-    return avg_embed.trans
-
-
-def mid_seq(direc: str):
-    """Getting most average sequence for each family in directory
-    """
-
-    # For each family in directory, get most average sequence
-    avg_seqs = {}
-    dcts = []
-    for fam in os.listdir(direc):
-
-        # Read sequence file
-        seqs = {}
-        with open(f'{direc}/{fam}/seqs.fa', 'r', encoding='utf8') as f:
+    # Read all sequences from pfam.seed without including the query
+    seqs = {}
+    for fam in os.listdir('data/families_nogaps'):
+        seqs[fam] = {}
+        with open(f'data/families_nogaps/{fam}/seqs.fa', 'r', encoding='utf8') as f:
             for seq in SeqIO.parse(f, 'fasta'):
-                if seq.id == 'consensus':
+                if seq.description in queries:
                     continue
-                seqs[seq.id] = str(seq.seq)
+                seqs[fam][seq.description] = str(seq.seq)
 
-        # Count characters at each position and find which sequence has most common characters
-        chars = count_chars(seqs)
-        seq = most_avg(seqs, chars, fam)
-        avg_seqs[fam] = seq
+    # Read all sequences from pfam.full without including query or seqs from pfam.seed
+    for fam in os.listdir('data/full_seqs'):
+        with open(f'data/full_seqs/{fam}/seqs.fa', 'r', encoding='utf8') as f:
+            for seq in SeqIO.parse(f, 'fasta'):
+                if len(seqs[fam]) > 500:
+                    break
+                if seq.description in queries:
+                    continue
+                if seqs[fam].get(seq.description) is not None:
+                    continue
+                seqs[fam][seq.description] = str(seq.seq)
 
-        # Get sequences and their positions in consensus
-        sequences = get_seqs(fam, avg_seqs)
-        positions = cons_pos(sequences)
+    # Remove family if it has less than 10 sequences
+    for fam in list(seqs):
+        if len(seqs[fam]) < 10:
+            del seqs[fam]
 
-        # Get embeddings
-        embed_direc = f'data/esm2_17_embed/{fam}'
-        embeddings = get_embed(embed_direc, sequences, avg_seqs, fam)
-        transform = average_embed(fam, positions, embeddings)
-        if isinstance(transform, np.ndarray):
-            dcts.append(transform)
+    return seqs
 
-    # Save avg transform to file
-    np.save('data/TEST_esm2_17_875_avg.npy', dcts)
+
+def get_dct(seqs):
+    """
+    """
+
+    if not os.path.exists('data/dct_full'):
+        os.makedirs('data/dct_full')
+
+    # Load tokenizer and encoder
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # pylint: disable=E1101
+    tokenizer, model = load_model('esm2', device)
+
+    # Embed and transform each sequence
+    for fam, seqs in seqs.items():
+        embeds = []
+        for seq in seqs.values():
+            embed = Embedding(None, seq, None)
+            embed.embed_seq(tokenizer, model, device, 'esm2', 17)
+            embeds.append(embed.embed[1])
+
+        # Transform each embedding to DCT
+        dcts = []
+        for embed in embeds:
+            dct = Transform(None, embed, None)
+            dct.quant_2D(8, 75)
+            dcts.append(dct.trans[1])
+
+        # Average each position across all DCTs using np.mean
+        avg = np.mean(dcts, axis=0, dtype=np.int16)
+
+        # Write dct to file
+        np.save(f'data/dct_full/{fam}', avg)
 
 
 def main():
@@ -321,7 +243,8 @@ def main():
     """
 
 
-    mid_seq('data/families_gaps')
+    seqs = avg_dct()
+    get_dct(seqs)
 
 
 if __name__ == '__main__':
