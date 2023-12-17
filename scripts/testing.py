@@ -77,27 +77,30 @@ def test_transforms():
                 os.system(f'rm data/esm2_{lay}_{s1}{s2}_avg.npy')
 
 
+### TESTING AVERAGE EMBEDDING ###
+
 def embed_query(
-    fam: str, tokenizer, model, device: str) -> tuple:
+    fam: str, tokenizer, model, device: str, query: str) -> tuple:
     """Returns the embedding of a fasta sequence.
 
     :param fam: family of query sequence
     :param tokenizer: tokenizer
     :param model: encoder model
     :param device: cpu or gpu
-    :param args: command line arguments
+    :param query: query sequence
     :return: Embedding and Transform objects
     """
 
-    # Get seqs from file and randomly sample one
-    seqs = {}
-    with open(f'data/full_seqs/{fam}/seqs.fa', 'r', encoding='utf8') as f:
-        for i, seq in enumerate(SeqIO.parse(f, 'fasta')):
-            seqs[i] = (seq.id, str(seq.seq))
-    seq = sample(list(seqs.values()), 1)[0]
+    # Get query sequence from family fasta file
+    with open(f'data/families_nogaps/{fam}/seqs.fa', 'r', encoding='utf8') as f:
+        for seq in SeqIO.parse(f, 'fasta'):
+            if seq.description == query:
+                seq_id = seq.id
+                seq = str(seq.seq)
+                break
 
     # Initialize Embedding object and embed sequence
-    embed = Embedding(seq[0], seq[1], None)
+    embed = Embedding(seq_id, seq, None)
     embed.embed_seq(tokenizer, model, device, 'esm2', 17)
 
     # DCT embedding
@@ -109,31 +112,6 @@ def embed_query(
     return embed, transform
 
 
-def search(dct: Transform, search_db: np.ndarray) -> dict:
-    """Searches transform against a database of transforms:
-
-    :param database: array of transforms
-    :param top: number of results to return
-    :return: dict where keys are family names and values are similarity scores
-    """
-
-    # Search query against every dct embedding
-    sims = {}
-    for transform in search_db:
-        fam, db_dct = transform[0], transform[1]  # family name, dct vector for family
-        dist =  1-cityblock(db_dct, dct.trans[1]) # compare query to dct
-
-        # If distance is within range of family's average dct, add to sims
-        rang = repr(transform[2][2]).strip('range(').strip(')')  # my fault for using range object
-        if int(rang.split(',')[0]) < dist < int(rang.split(',')[1]):
-            sims[fam] = dist
-
-    # Return first n results
-    sims = dict(sorted(sims.items(), key=lambda item: item[1], reverse=True))
-
-    return sims
-
-
 def test_search(): #\\NOSONAR
     """Testing search method in Transform class.
     """
@@ -143,27 +121,31 @@ def test_search(): #\\NOSONAR
     tokenizer, model = load_model('esm2', device)
 
     # DCT database
-    dct_db = np.load('data/dct_stats.npy', allow_pickle=True)
-    dct_fams = [transform[0] for transform in dct_db]
+    dct_db = np.load('data/dct_full.npy', allow_pickle=True)
 
+    # List of queries
+    queries = {}
+    with open('data/queries.txt', 'r', encoding='utf8') as f:
+        for line in f:
+            queries[line.split('/')[0]] = line.split('/')[1].strip('\n')
+
+    # Search each query against dct database
     counts = {'match': 0, 'top': 0, 'clan': 0, 'total': 0}
-    for fam in dct_fams:
+    for fam in list(queries.keys()):
 
-        # Get random sequence from family and embed/transform sequence
-        embed, dct = embed_query(fam, tokenizer, model, device)
+        # Get sequence embedding and dct
+        embed, dct = embed_query(fam, tokenizer, model, device, queries[fam])
         if dct is None:
             logging.info('%s\n%s\nQuery was too small for transformation dimensions',
                           datetime.datetime.now(), embed.embed[0])
             continue
 
         # Search dct db - check if top family is same as query family
-        results = search(dct, dct_db)
+        results = dct.search(dct_db, 100)
         counts = search_results(f'{fam}/{dct.trans[0]}', results, counts)
         logging.info('DCT: Queries: %s, Matches: %s, Top%s: %s, Clan: %s\n',
                       counts['total'], counts['match'], len(results), counts['top'], counts['clan'])
 
-
-### TESTING AVERAGE EMBEDDING ###
 
 def avg_dct():
     """
@@ -186,7 +168,10 @@ def avg_dct():
                 seqs[fam][seq.description] = str(seq.seq)
 
     # Read all sequences from pfam.full without including query or seqs from pfam.seed
+    count = 0
     for fam in os.listdir('data/full_seqs'):
+        count += 1
+        logging.info('Reading %s', count)
         with open(f'data/full_seqs/{fam}/seqs.fa', 'r', encoding='utf8') as f:
             for seq in SeqIO.parse(f, 'fasta'):
                 if len(seqs[fam]) > 500:
@@ -217,7 +202,16 @@ def get_dct(seqs):
     tokenizer, model = load_model('esm2', device)
 
     # Embed and transform each sequence
+    count = 0
     for fam, seqs in seqs.items():
+
+        # Skip if family already exists in dct_full
+        if os.path.exists(f'data/dct_full/{fam}.npy'):
+            logging.info('Skipping %s', fam)
+            continue
+
+        count += 1
+        logging.info('Embedding %s, %s', count, fam)
         embeds = []
         for seq in seqs.values():
             embed = Embedding(None, seq, None)
@@ -232,19 +226,38 @@ def get_dct(seqs):
             dcts.append(dct.trans[1])
 
         # Average each position across all DCTs using np.mean
-        avg = np.mean(dcts, axis=0, dtype=np.int16)
+        ## ValueError: setting an array element with a sequence
+        try:
+            avg = np.mean(dcts, axis=0, dtype=np.int16)
+            avg = Transform(fam, None, avg)
+        except ValueError:
+            logging.info('ValueError %s, %s', count, fam)
+            continue
+        except TypeError:
+            logging.info('TypeError %s, %s', count, fam)
+            continue
 
         # Write dct to file
-        np.save(f'data/dct_full/{fam}', avg)
+        np.save(f'data/dct_full/{fam}', avg.trans)
 
 
 def main():
     """Main calls test functions.
     """
 
+    #seqs = avg_dct()
+    #get_dct(seqs)
 
-    seqs = avg_dct()
-    get_dct(seqs)
+    # Combine all dct's in dct_full into single array
+    #dct_db = []
+    #for fam in os.listdir('data/dct_full'):
+        #dct = np.load(f'data/dct_full/{fam}', allow_pickle=True)
+        #dct_db.append(dct)
+
+    # Write dct_db to file
+    #np.save('data/dct_full.npy', dct_db)
+
+    test_search()
 
 
 if __name__ == '__main__':
